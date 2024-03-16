@@ -25,6 +25,7 @@ test('transform / border', () => {
     },
   })
 
+  dictionary.registerTokens()
   dictionary.registerTransform(transformBorders, addCssVariables, addConditionalCssVariables)
 
   dictionary.build()
@@ -65,7 +66,7 @@ test('transform / border', () => {
           "sm",
         ],
         "type": "border",
-        "value": "1px solid #ff0000",
+        "value": "1px solid var(--colors-red)",
       },
       Token {
         "description": undefined,
@@ -83,7 +84,7 @@ test('transform / border', () => {
           "md",
         ],
         "type": "border",
-        "value": "2px solid #ff0000",
+        "value": "2px solid var(--colors-red)",
       },
       Token {
         "description": undefined,
@@ -91,8 +92,8 @@ test('transform / border', () => {
           "category": "borders",
           "condition": "base",
           "conditions": {
-            "@hover": "{borders.md}",
-            "base": "{borders.sm}",
+            "@hover": "var(--borders-md)",
+            "base": "var(--borders-sm)",
           },
           "prop": "controlBorder",
           "var": "--borders-control-border",
@@ -105,29 +106,7 @@ test('transform / border', () => {
           "controlBorder",
         ],
         "type": "border",
-        "value": "1px solid #ff0000",
-      },
-      Token {
-        "description": undefined,
-        "extensions": {
-          "category": "borders",
-          "condition": "@hover",
-          "conditions": {
-            "@hover": "{borders.md}",
-            "base": "{borders.sm}",
-          },
-          "prop": "controlBorder",
-          "var": "--borders-control-border",
-          "varRef": "var(--borders-control-border)",
-        },
-        "name": "borders.controlBorder",
-        "originalValue": "{borders.sm}",
-        "path": [
-          "borders",
-          "controlBorder",
-        ],
-        "type": "border",
-        "value": "2px solid #ff0000",
+        "value": "var(--borders-sm)",
       },
       Token {
         "description": undefined,
@@ -135,7 +114,7 @@ test('transform / border', () => {
           "category": "borders",
           "condition": "base",
           "conditions": {
-            "base": "{borders.controlBorder}",
+            "base": "var(--borders-control-border)",
           },
           "prop": "dividerBorder",
           "var": "--borders-divider-border",
@@ -149,6 +128,28 @@ test('transform / border', () => {
         ],
         "type": "border",
         "value": "var(--borders-control-border)",
+      },
+      Token {
+        "description": undefined,
+        "extensions": {
+          "category": "borders",
+          "condition": "@hover",
+          "conditions": {
+            "@hover": "var(--borders-md)",
+            "base": "var(--borders-sm)",
+          },
+          "prop": "controlBorder",
+          "var": "--borders-control-border",
+          "varRef": "var(--borders-control-border)",
+        },
+        "name": "borders.controlBorder",
+        "originalValue": "{borders.sm}",
+        "path": [
+          "borders",
+          "controlBorder",
+        ],
+        "type": "border",
+        "value": "var(--borders-md)",
       },
     ]
   `)

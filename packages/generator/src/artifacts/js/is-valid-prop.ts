@@ -1,7 +1,7 @@
-import isValidPropJson from '../generated/is-valid-prop.mjs.json' assert { type: 'json' }
-import type { Context } from '../../engines'
+import type { Context } from '@pandacss/core'
 import { outdent } from 'outdent'
 import { match } from 'ts-pattern'
+import isValidPropJson from '../generated/is-valid-prop.mjs.json' assert { type: 'json' }
 
 const cssPropRegex = /var cssPropertiesStr = ".*?";/
 const memoFnDeclarationRegex = /function memo(.+?)\nvar cssPropertySelectorRegex/s
@@ -14,7 +14,7 @@ export function generateIsValidProp(ctx: Context) {
   content = content.replace(
     'var userGeneratedStr = "";',
     `var userGeneratedStr = "${match(ctx.jsx.styleProps)
-      .with('all', () => Array.from(new Set(ctx.properties)).join(','))
+      .with('all', () => Array.from(ctx.properties).join(','))
       .with('minimal', () => 'css')
       .with('none', () => '')
       .exhaustive()}"`,
@@ -32,12 +32,22 @@ export function generateIsValidProp(ctx: Context) {
     content = ctx.file.import('memo', '../helpers') + '\n' + content
   }
 
+  content = ctx.file.import('splitProps', '../helpers') + '\n' + content
+  content += `export const splitCssProps = (props) =>  splitProps(props, isCssProperty)`
+
   return {
     js: content,
     dts: outdent`
+    import type { DistributiveOmit, HTMLPandaProps, JsxStyleProps, Pretty } from '../types';
+
     declare const isCssProperty: (value: string) => boolean;
 
-    export { isCssProperty };
+    type CssPropKey = keyof JsxStyleProps
+    type OmittedCssProps<T> = Pretty<DistributiveOmit<T, CssPropKey>>
+
+    declare const splitCssProps: <T>(props: T) => [JsxStyleProps, OmittedCssProps<T>]
+
+    export { isCssProperty, splitCssProps };
     `,
   }
 }

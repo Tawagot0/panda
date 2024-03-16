@@ -1,13 +1,13 @@
+import type { Context } from '@pandacss/core'
 import outdent from 'outdent'
-import type { Context } from '../../engines'
 
 export function generateTokenJs(ctx: Context) {
   const { tokens } = ctx
   const map = new Map<string, { value: string; variable: string }>()
 
   tokens.allTokens.forEach((token) => {
-    const { varRef } = token.extensions
-    const value = token.isConditional ? varRef : token.value
+    const { varRef, isVirtual } = token.extensions
+    const value = isVirtual || token.extensions.condition !== 'base' ? varRef : token.value
     map.set(token.name, { value, variable: varRef })
   })
 

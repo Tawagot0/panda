@@ -3,7 +3,9 @@ import type {
   Config,
   CssKeyframes,
   GlobalStyleObject,
+  HooksApiInterface,
   LayerStyles,
+  PandaPlugin,
   Parts,
   PatternConfig,
   Preset,
@@ -15,6 +17,7 @@ import type {
   SlotRecipeVariantRecord,
   SystemStyleObject,
   TextStyles,
+  ThemeVariant,
   Tokens,
 } from '@pandacss/types'
 
@@ -38,7 +41,17 @@ export function defineSlotRecipe<S extends string, T extends SlotRecipeVariantRe
 
 export function defineParts<T extends Parts>(parts: T) {
   return function (config: Partial<Record<keyof T, SystemStyleObject>>): Partial<Record<keyof T, SystemStyleObject>> {
-    return Object.fromEntries(Object.entries(config).map(([key, value]) => [parts[key].selector, value])) as any
+    return Object.fromEntries(
+      Object.entries(config).map(([key, value]) => {
+        const part = parts[key]
+        if (part == null) {
+          throw new Error(
+            `Part "${key}" does not exist in the anatomy. Available parts: ${Object.keys(parts).join(', ')}`,
+          )
+        }
+        return [part.selector, value]
+      }),
+    ) as any
   }
 }
 
@@ -62,6 +75,18 @@ export function defineUtility(utility: PropertyConfig) {
   return utility
 }
 
+export function definePlugin(plugin: PandaPlugin) {
+  return plugin
+}
+
+export function defineThemeVariant<T extends ThemeVariant>(theme: T) {
+  return theme
+}
+
+export function defineThemeContract<C extends Partial<Omit<ThemeVariant, 'selector'>>>(_contract: C) {
+  return <T extends C & ThemeVariant>(theme: T) => defineThemeVariant(theme as T)
+}
+
 /* -----------------------------------------------------------------------------
  * Token creators
  * -----------------------------------------------------------------------------*/
@@ -81,8 +106,8 @@ function createProxy<T>(): ProxyValue<T> {
   })
 }
 
-export const defineTokens = createProxy<Tokens>()
-export const defineSemanticTokens = createProxy<SemanticTokens>()
+export const defineTokens = /* @__PURE__ */ createProxy<Tokens>()
+export const defineSemanticTokens = /* @__PURE__ */ createProxy<SemanticTokens>()
 
 export function defineTextStyles(definition: CompositionStyles['textStyles']) {
   return definition
@@ -101,12 +126,13 @@ export type {
   Config,
   CssKeyframes,
   GlobalStyleObject,
+  HooksApiInterface,
   LayerStyles,
+  PatternConfig,
   Preset,
   PropertyConfig,
   RecipeConfig,
   RecipeVariantRecord,
-  PatternConfig,
   SemanticTokens,
   SlotRecipeConfig,
   SlotRecipeVariantRecord,

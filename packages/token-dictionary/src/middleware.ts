@@ -1,10 +1,13 @@
-import { calc, cssVar, toPx } from '@pandacss/shared'
+import { calc, toPx } from '@pandacss/shared'
 import type { TokenDictionary, TokenMiddleware } from './dictionary'
-import { Token } from './token'
+import { Token, type TokenExtensions } from './token'
+import type { ColorPaletteExtensions } from './transform'
 
 export const addNegativeTokens: TokenMiddleware = {
   enforce: 'pre',
-  transform(dictionary: TokenDictionary, { prefix, hash }) {
+  transform(dictionary: TokenDictionary) {
+    const { prefix, hash } = dictionary
+
     const tokens = dictionary.filter({
       extensions: { category: 'spacing' },
     })
@@ -12,7 +15,7 @@ export const addNegativeTokens: TokenMiddleware = {
     tokens.forEach((token) => {
       //
       const originalPath = [...token.path]
-      const originalVar = cssVar(originalPath.join('-'), { prefix, hash })
+      const originalVar = dictionary.formatCssVar(originalPath, { prefix, hash })
 
       if (token.value === '0rem') {
         return
@@ -33,10 +36,10 @@ export const addNegativeTokens: TokenMiddleware = {
       }
 
       if (node.path) {
-        node.name = node.path.join('.')
+        node.name = dictionary.formatTokenName(node.path)
       }
 
-      dictionary.allTokens.push(node)
+      dictionary.registerToken(node)
     })
   },
 }
@@ -61,19 +64,20 @@ export const addPixelUnit: TokenMiddleware = {
 export const addVirtualPalette: TokenMiddleware = {
   enforce: 'post',
   transform(dictionary: TokenDictionary) {
-    const tokens = dictionary.filter({
-      extensions: { category: 'colors' },
-    })
+    const tokens = dictionary.filter({ extensions: { category: 'colors' } })
 
-    const keys = new Set<string>()
+    const keys = new Map<string, string[]>()
     const colorPalettes = new Map<string, Token[]>()
 
     tokens.forEach((token) => {
-      const { colorPalette, colorPaletteRoots, colorPaletteTokenKeys } = token.extensions
+      const { colorPalette, colorPaletteRoots, colorPaletteTokenKeys } =
+        token.extensions as TokenExtensions<ColorPaletteExtensions>
       if (!colorPalette) return
 
       // Add colorPalette keys to the set so we can create virtual tokens for them
-      colorPaletteTokenKeys.forEach(keys.add, keys)
+      colorPaletteTokenKeys.forEach((keyPath) => {
+        keys.set(dictionary.formatTokenName(keyPath), keyPath)
+      })
 
       /**
        * Assign nested tokens to their respective color palette list.
@@ -105,30 +109,36 @@ export const addVirtualPalette: TokenMiddleware = {
        *  'button.light.accent': ['colors.button.light.accent.secondary'],
        * }
        */
-      colorPaletteRoots.forEach((colorPaletteRoot: string) => {
-        const colorPaletteList = colorPalettes.get(colorPaletteRoot) || []
+      colorPaletteRoots.forEach((colorPaletteRoot) => {
+        const formated = dictionary.formatTokenName(colorPaletteRoot)
+        const colorPaletteList = colorPalettes.get(formated) || []
         colorPaletteList.push(token)
-        colorPalettes.set(colorPaletteRoot, colorPaletteList)
+        colorPalettes.set(formated, colorPaletteList)
+        if (token.extensions.isDefault && colorPaletteRoot.length === 1) {
+          const keyPath = colorPaletteTokenKeys[0]?.filter(Boolean)
+          if (!keyPath.length) return
+
+          const path = colorPaletteRoot.concat(keyPath)
+          keys.set(dictionary.formatTokenName(path), [])
+        }
       })
     })
 
-    keys.forEach((key) => {
+    keys.forEach((segments) => {
       const node = new Token({
-        name: `colors.colorPalette.${key}`,
-        value: `{colors.colorPalette.${key}}`,
-        path: ['colors', 'colorPalette', ...key.split('.')],
+        name: dictionary.formatTokenName(['colors', 'colorPalette', ...segments].filter(Boolean)),
+        value: dictionary.formatTokenName(['colors', 'colorPalette', ...segments].filter(Boolean)),
+        path: ['colors', 'colorPalette', ...segments],
       })
 
       node.setExtensions({
         category: 'colors',
-        prop: `colorPalette.${key}`,
+        prop: dictionary.formatTokenName(['colorPalette', ...segments].filter(Boolean)),
         isVirtual: true,
       })
 
-      dictionary.allTokens.push(node)
+      dictionary.registerToken(node, 'pre')
     })
-
-    dictionary.transformTokens('pre')
   },
 }
 

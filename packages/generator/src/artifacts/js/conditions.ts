@@ -1,5 +1,5 @@
+import type { Context } from '@pandacss/core'
 import outdent from 'outdent'
-import type { Context } from '../../engines'
 
 export function generateConditions(ctx: Context) {
   const keys = Object.keys(ctx.conditions.values).concat('base')
@@ -43,31 +43,27 @@ export function generateConditions(ctx: Context) {
     dts: outdent`
     ${ctx.file.importType('AnySelector, Selectors', './selectors')}
 
-    export type Conditions = {
+    export interface Conditions {
     ${keys
       .map(
         (key) =>
           `\t${
             key === 'base'
-              ? `/** The base (=no conditions) styles to apply  */`
+              ? `/** The base (=no conditions) styles to apply  */\n`
               : ctx.conditions.get(key)
-              ? `/** \`${ctx.conditions.get(key)}\` */`
-              : ''
-          }${JSON.stringify(key)}: string`,
+                ? `/** \`${([] as string[]).concat(ctx.conditions.get(key) ?? '').join(' ')}\` */\n`
+                : ''
+          }\t${JSON.stringify(key)}: string`,
       )
       .join('\n')}
     }
 
-    export type Condition = keyof Conditions
-
-    export type Conditional<V> =
+    export type ConditionalValue<V> =
       | V
       | Array<V | null>
       | {
-          [K in keyof Conditions]?: Conditional<V>
+          [K in keyof Conditions]?: ConditionalValue<V>
         }
-
-    export type ConditionalValue<T> = Conditional<T>
 
     export type Nested<P> = P & {
       [K in Selectors]?: Nested<P>

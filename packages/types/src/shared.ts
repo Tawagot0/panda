@@ -2,7 +2,9 @@ type Primitive = string | number | boolean | null | undefined
 
 export type LiteralUnion<T, K extends Primitive = string> = T | (K & Record<never, never>)
 
-export type Recursive<T> = { [key: string]: T | Recursive<T> }
+export interface Recursive<T> {
+  [key: string]: T | Recursive<T>
+}
 
 export type Dict<T = any> = Record<string, T>
 
@@ -10,23 +12,28 @@ export type RequiredBy<T, K extends keyof T> = Partial<Omit<T, K>> & Required<Pi
 
 export type AnyFunction<T = any> = (...args: T[]) => any
 
-type DeepPartialObject<T extends object> = {
-  [K in keyof T]?: DeepPartial<T[K]>
-}
-export type DeepPartial<T> = T extends object ? DeepPartialObject<T> : T
+export type Nullable<T> = T | null | undefined
 
-export type Extendable<T extends Record<any, any>> = T | { extend?: DeepPartial<T> }
+export type Keys<T> = keyof NonNullable<T>
 
-type Nullable<T> = T | null | undefined
+type Subtract<T extends number, D extends number> = T extends D ? 0 : T extends D | any ? Exclude<T, D> : never
 
-export type UnwrapExtend<T> = {
-  [K in keyof T]: T[K] extends Nullable<Extendable<infer U>> ? U : T[K]
-}
+/**
+ * Get all the (nested) paths of an object until a certain depth
+ * e.g. Paths<{a: {b: {c: 1}}}, '', 2> => 'a' | 'a.b' | 'a.b.c'
+ */
+type Paths<T, Prefix extends string = '', Depth extends number = 0> = {
+  [K in keyof T]: Depth extends 0
+    ? never
+    : T[K] extends object
+      ? K extends string
+        ? `${Prefix}${K}` | Paths<T[K], `${Prefix}${K}.`, Depth extends 1 ? 0 : Subtract<Depth, 1>>
+        : never
+      : K extends string | number
+        ? `${Prefix}${K}`
+        : never
+}[keyof T]
 
-export type Artifact = Nullable<{
-  dir?: string[]
-  files: Array<{
-    file: string
-    code: string | undefined
-  }>
-}>
+export type PathIn<T, Key extends keyof T> = Key extends string ? Paths<T[Key], `${Key}.`, 1> : never
+
+export type PartialBy<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>

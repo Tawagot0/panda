@@ -1,36 +1,21 @@
-import { getConfigDependencies } from '@pandacss/config'
-import { discardDuplicate, mergeCss } from '@pandacss/core'
-import { ConfigNotFoundError } from '@pandacss/error'
+import { findConfig, getConfigDependencies } from '@pandacss/config'
+import { optimizeCss } from '@pandacss/core'
 import { logger } from '@pandacss/logger'
-import { existsSync } from 'fs'
-import { statSync } from 'fs-extra'
-import { resolve } from 'path'
+import { PandaError, uniq } from '@pandacss/shared'
+import type { DiffConfigResult } from '@pandacss/types'
+import { existsSync, statSync } from 'fs'
+import { normalize, resolve } from 'path'
 import type { Message, Root } from 'postcss'
-import { findConfig, loadConfigAndCreateContext } from './config'
-import { type PandaContext } from './create-context'
-import { emitArtifacts, extractFile } from './extract'
+import { codegen } from './codegen'
+import { loadConfigAndCreateContext } from './config'
+import { PandaContext } from './create-context'
 import { parseDependency } from './parse-dependency'
 
-type ContentData = {
-  fileCssMap: Map<string, string>
-  fileModifiedMap: Map<string, number>
+const fileModifiedMap = new Map<string, number>()
+interface FileChanges {
+  changes: Map<string, FileMeta>
+  hasFilesChanged: boolean
 }
-
-type ConfigData = {
-  context: PandaContext
-  deps: Set<string>
-  depsModifiedMap: Map<string, number>
-}
-
-type ConfigDepsResult = {
-  modifiedMap: Map<string, number>
-  isModified: boolean
-}
-
-const configCache = new Map<string, ConfigData>()
-const contentFilesCache = new WeakMap<PandaContext, ContentData>()
-
-let setupCount = 0
 
 export class Builder {
   /**
@@ -38,168 +23,158 @@ export class Builder {
    */
   context: PandaContext | undefined
 
-  configDependencies: Set<string> = new Set()
+  private hasEmitted = false
+  private filesMeta: FileChanges | undefined
+  private explicitDepsMeta: FileChanges | undefined
+  private affecteds: DiffConfigResult | undefined
+  private configDependencies: Set<string> = new Set()
 
-  writeFileCss = (file: string, css: string) => {
-    const oldCss = this.fileCssMap?.get(file) ?? ''
-    const newCss = mergeCss(oldCss, css)
-    this.fileCssMap?.set(file, newCss)
-  }
+  setConfigDependencies(options: SetupContextOptions) {
+    const tsOptions = this.context?.conf.tsOptions ?? { baseUrl: undefined, pathMappings: [] }
+    const compilerOptions = this.context?.conf.tsconfig?.compilerOptions ?? {}
 
-  checkConfigDeps = (configPath: string, deps: Set<string>): ConfigDepsResult => {
-    let modified = false
+    const { deps: foundDeps } = getConfigDependencies(options.configPath, tsOptions, compilerOptions)
+    const cwd = options?.cwd ?? this.context?.config.cwd ?? process.cwd()
 
-    const newModified = new Map()
-    const prevModified = configCache.get(configPath)?.depsModifiedMap
+    const configDeps = new Set([
+      ...foundDeps,
+      ...(this.context?.conf.dependencies ?? []).map((file) => resolve(cwd, file)),
+    ])
 
-    for (const file of deps) {
-      const stats = statSync(file, { throwIfNoEntry: false })
-      if (!stats) continue
+    configDeps.forEach((file) => {
+      this.configDependencies.add(file)
+    })
 
-      const time = stats.mtimeMs
-      newModified.set(file, time)
-
-      if (!prevModified || !prevModified.has(file) || time > prevModified.get(file)!) {
-        modified = true
-      }
-    }
-
-    if (!modified) {
-      return { isModified: false, modifiedMap: prevModified! }
-    }
-
-    for (const file of deps) {
-      delete require.cache[file]
-    }
-
-    if (setupCount > 0) {
-      logger.debug('builder', '⚙️ Config changed, reloading')
-    }
-
-    return { isModified: true, modifiedMap: newModified }
-  }
-
-  getConfigPath = () => {
-    const configPath = findConfig()
-
-    if (!configPath) {
-      throw new ConfigNotFoundError()
-    }
-
-    return configPath
+    logger.debug('builder', 'Config dependencies')
+    logger.debug('builder', configDeps)
   }
 
   setup = async (options: { configPath?: string; cwd?: string } = {}) => {
     logger.debug('builder', '🚧 Setup')
 
-    const configPath = options.configPath ?? this.getConfigPath()
-    const tsOptions = this.context?.tsOptions ?? { baseUrl: undefined, pathMappings: [] }
-    const compilerOptions = this.context?.tsconfig?.compilerOptions ?? {}
+    const configPath = options.configPath ?? findConfig({ cwd: options.cwd })
+    this.setConfigDependencies({ configPath, cwd: options.cwd })
 
-    const { deps: foundDeps } = getConfigDependencies(configPath, tsOptions, compilerOptions)
-    const cwd = options?.cwd ?? this.context?.config.cwd ?? process.cwd()
-
-    const configDeps = new Set([...foundDeps, ...(this.context?.dependencies ?? []).map((file) => resolve(cwd, file))])
-    this.configDependencies = configDeps
-
-    const deps = this.checkConfigDeps(configPath, configDeps)
-
-    if (deps.isModified) {
-      await this.setupContext({
-        configPath,
-        depsModifiedMap: deps.modifiedMap,
-      })
-      const ctx = this.context!
-      await ctx.hooks.callHook('config:change', ctx.config)
+    if (!this.context) {
+      return this.setupContext({ configPath, cwd: options.cwd })
     }
 
-    const cache = configCache.get(configPath)
+    const ctx = this.getContextOrThrow()
 
-    if (cache) {
-      this.context = cache.context
-      this.context.project.reloadSourceFiles()
+    this.affecteds = await ctx.diff.reloadConfigAndRefreshContext((conf) => {
+      this.context = new PandaContext(conf)
+    })
 
-      //
-    } else {
-      await this.setupContext({
-        configPath,
-        depsModifiedMap: deps.modifiedMap,
+    logger.debug('builder', this.affecteds)
+
+    // explicit config dependencies change
+    this.explicitDepsMeta = this.checkFilesChanged(this.context.explicitDeps)
+
+    if (this.explicitDepsMeta.hasFilesChanged) {
+      this.explicitDepsMeta.changes.forEach((meta, file) => {
+        fileModifiedMap.set(file, meta.mtime)
       })
+
+      logger.debug('builder', '⚙️ Explicit config dependencies changed')
+      this.affecteds.hasConfigChanged = true
     }
 
-    setupCount++
+    // config change
+    if (this.affecteds.hasConfigChanged) {
+      logger.debug('builder', '⚙️ Config changed, reloading')
+      await ctx.hooks['config:change']?.({ config: ctx.config, changes: this.affecteds })
+      return
+    }
+
+    // file changes
+    this.filesMeta = this.checkFilesChanged(ctx.getFiles())
+    if (this.filesMeta.hasFilesChanged) {
+      logger.debug('builder', 'Files changed, invalidating them')
+      ctx.project.reloadSourceFiles()
+    }
   }
 
-  setupContext = async (options: { configPath: string; depsModifiedMap: Map<string, number> }) => {
-    const { configPath, depsModifiedMap } = options
-
-    this.context = await loadConfigAndCreateContext({ configPath })
-
-    // don't emit artifacts on first setup
-    if (setupCount > 0) {
-      emitArtifacts(this.context) // no need to await this
+  async emit() {
+    // ensure emit is only called when the config is changed
+    if (this.hasEmitted && this.affecteds?.hasConfigChanged) {
+      logger.debug('builder', 'Emit artifacts after config change')
+      await codegen(this.getContextOrThrow(), Array.from(this.affecteds.artifacts))
     }
 
-    configCache.set(configPath, {
-      context: this.context,
-      deps: new Set(this.context.dependencies ?? []),
-      depsModifiedMap,
+    this.hasEmitted = true
+  }
+
+  setupContext = async (options: SetupContextOptions) => {
+    const { configPath, cwd } = options
+
+    const ctx = await loadConfigAndCreateContext({ configPath, cwd })
+
+    const configDeps = uniq([...ctx.conf.dependencies, ...ctx.explicitDeps])
+
+    configDeps.forEach((file) => {
+      this.configDependencies.add(resolve(cwd || ctx.conf.config.cwd, file))
     })
 
-    contentFilesCache.set(this.context, {
-      fileCssMap: new Map(),
-      fileModifiedMap: new Map(),
-    })
+    this.context = ctx
+    return ctx
   }
 
   getContextOrThrow = (): PandaContext => {
     if (!this.context) {
-      throw new Error('context not loaded')
+      throw new PandaError('NO_CONTEXT', 'context not loaded')
     }
     return this.context
   }
 
-  get fileModifiedMap() {
-    const ctx = this.getContextOrThrow()
-    return contentFilesCache.get(ctx)!.fileModifiedMap
-  }
-
-  get fileCssMap() {
-    const ctx = this.getContextOrThrow()
-    return contentFilesCache.get(ctx)!.fileCssMap
-  }
-
-  extractFile = async (ctx: PandaContext, file: string) => {
+  getFileMeta = (file: string) => {
     const mtime = existsSync(file) ? statSync(file).mtimeMs : -Infinity
-
-    const isUnchanged = this.fileModifiedMap.has(file) && mtime === this.fileModifiedMap.get(file)
-    if (isUnchanged) return
-
-    const css = extractFile(ctx, file)
-    if (!css) return
-
-    this.fileModifiedMap.set(file, mtime)
-    this.writeFileCss(file, css)
-
-    return css
+    const isUnchanged = fileModifiedMap.has(file) && mtime === fileModifiedMap.get(file)
+    return { mtime, isUnchanged }
   }
 
-  extract = async () => {
+  checkFilesChanged(files: string[]) {
+    const changes = new Map<string, FileMeta>()
+
+    let hasFilesChanged = false
+
+    for (const file of files) {
+      const meta = this.getFileMeta(file)
+      changes.set(file, meta)
+      if (!meta.isUnchanged) {
+        hasFilesChanged = true
+      }
+    }
+
+    return { changes, hasFilesChanged }
+  }
+
+  extractFile = (ctx: PandaContext, file: string) => {
+    const meta = this.filesMeta?.changes.get(file) ?? this.getFileMeta(file)
+
+    const hasConfigChanged = this.affecteds ? this.affecteds.hasConfigChanged : true
+    if (meta.isUnchanged && !hasConfigChanged) return
+
+    const parserResult = ctx.parseFile(file)
+    fileModifiedMap.set(file, meta.mtime)
+
+    return parserResult
+  }
+
+  extract = () => {
+    const hasConfigChanged = this.affecteds ? this.affecteds.hasConfigChanged : true
+    if (!this.filesMeta && !hasConfigChanged) {
+      logger.debug('builder', 'No files or config changed, skipping extract')
+      return
+    }
+
     const ctx = this.getContextOrThrow()
+    const files = ctx.getFiles()
 
     const done = logger.time.info('Extracted in')
 
-    await Promise.all(ctx.getFiles().map((file) => this.extractFile(ctx, file)))
+    files.map((file) => this.extractFile(ctx, file))
 
     done()
-  }
-
-  toString = () => {
-    const ctx = this.getContextOrThrow()
-    return ctx.getCss({
-      files: Array.from(this.fileCssMap.values()),
-      resolve: true,
-    })
   }
 
   isValidRoot = (root: Root) => {
@@ -207,7 +182,7 @@ export class Builder {
     let valid = false
 
     root.walkAtRules('layer', (rule) => {
-      if (ctx.isValidLayerRule(rule.params)) {
+      if (ctx.isValidLayerParams(rule.params)) {
         valid = true
       }
     })
@@ -216,14 +191,17 @@ export class Builder {
   }
 
   write = (root: Root) => {
-    const rootCssContent = root.toString()
-    root.removeAll()
+    const ctx = this.getContextOrThrow()
+    const sheet = ctx.createSheet()
+    ctx.appendBaselineCss(sheet)
+    const css = ctx.getCss(sheet)
 
     root.append(
-      discardDuplicate(`
-    ${rootCssContent}
-    ${this.toString()}
-    `),
+      optimizeCss(css, {
+        browserslist: ctx.config.browserslist,
+        minify: ctx.config.minify,
+        lightningcss: ctx.config.lightningcss,
+      }),
     )
   }
 
@@ -232,17 +210,21 @@ export class Builder {
 
     for (const fileOrGlob of ctx.config.include) {
       const dependency = parseDependency(fileOrGlob)
-      if (dependency) {
-        fn(dependency)
-      }
-    }
-
-    for (const file of ctx.dependencies) {
-      fn({ type: 'dependency', file: resolve(file) })
+      if (dependency) fn(dependency)
     }
 
     for (const file of this.configDependencies) {
-      fn({ type: 'dependency', file: resolve(file) })
+      fn({ type: 'dependency', file: normalize(resolve(file)) })
     }
   }
+}
+
+interface FileMeta {
+  mtime: number
+  isUnchanged: boolean
+}
+
+interface SetupContextOptions {
+  configPath: string
+  cwd?: string
 }

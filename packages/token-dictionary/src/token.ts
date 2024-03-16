@@ -1,4 +1,5 @@
-import { isBaseCondition, isObject, toHash, walkObject } from '@pandacss/shared'
+import { isBaseCondition, toHash, walkObject } from '@pandacss/shared'
+import { isCompositeTokenValue } from './is-composite'
 import { getReferences, hasReference } from './utils'
 
 /**
@@ -15,23 +16,28 @@ export type TokenEntry<T = any> = {
 
 type TokenStatus = 'deprecated' | 'experimental' | 'new'
 
-type ExtensionData = {
+interface ExtensionData {
   status?: TokenStatus
   category?: string
   references?: TokenReferences
   condition?: string
   conditions?: TokenConditions
+  theme?: string
 }
 
-type TokenConditions = Record<string, string>
+interface TokenConditions {
+  [key: string]: string
+}
 
-type TokenReferences = Record<string, Token>
+interface TokenReferences {
+  [key: string]: Token
+}
 
-type TokenExtensions = ExtensionData & {
+export type TokenExtensions<T = {}> = ExtensionData & {
   [key: string]: any
-}
+} & T
 
-type ExtendedToken = {
+interface ExtendedToken {
   name: string
   value: any
   type?: string
@@ -101,16 +107,16 @@ export class Token {
    * Whether the token is a complex or composite token.
    */
   get isComposite() {
-    return isObject(this.originalValue) || Array.isArray(this.originalValue)
+    return isCompositeTokenValue(this.originalValue)
   }
 
   /**
    * Returns the token value with the references expanded.
-   * e.g. {color.gray.100} => #f7fafc
+   * e.g. {color.gray.100} => var(--colors-gray-100)
    *
    */
   expandReferences(): string {
-    if (!this.hasReference) return this.value
+    if (!this.hasReference) return this.extensions.varRef ?? this.value
 
     const references = this.extensions.references ?? {}
 
@@ -228,6 +234,8 @@ const TOKEN_TYPES = {
   gradients: 'gradient',
   easings: 'cubicBezier',
   borders: 'border',
+  borderWidths: 'borderWidth',
   components: 'cti',
   assets: 'asset',
+  aspectRatios: 'aspectRatio',
 }

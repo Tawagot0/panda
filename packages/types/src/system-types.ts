@@ -1,9 +1,21 @@
-import type { ConditionalValue, Conditions, Nested } from './conditions'
+import type { ConditionalValue, Nested } from './conditions'
 import type { PropertiesFallback } from './csstype'
 import type { SystemProperties, CssVarProperties } from './style-props'
 
 type String = string & {}
 type Number = number & {}
+
+export type Pretty<T> = { [K in keyof T]: T[K] } & {}
+
+export type DistributiveOmit<T, K extends keyof any> = T extends unknown ? Omit<T, K> : never
+
+export type DistributiveUnion<T, U> = {
+  [K in keyof T]: K extends keyof U ? U[K] | T[K] : T[K]
+} & DistributiveOmit<U, keyof T>
+
+export type Assign<T, U> = {
+  [K in keyof T]: K extends keyof U ? U[K] : T[K]
+} & U
 
 /* -----------------------------------------------------------------------------
  * Native css properties
@@ -11,9 +23,9 @@ type Number = number & {}
 
 export type CssProperty = keyof PropertiesFallback
 
-export type CssProperties = PropertiesFallback<String | Number> & CssVarProperties
+export interface CssProperties extends PropertiesFallback<String | Number>, CssVarProperties {}
 
-export type CssKeyframes = {
+export interface CssKeyframes {
   [name: string]: {
     [time: string]: CssProperties
   }
@@ -23,11 +35,7 @@ export type CssKeyframes = {
  * Conditional css properties
  * -----------------------------------------------------------------------------*/
 
-type MinimalNested<P> = {
-  [K in keyof Conditions]?: Nested<P>
-}
-
-type GenericProperties = {
+interface GenericProperties {
   [key: string]: ConditionalValue<String | Number | boolean>
 }
 
@@ -39,29 +47,31 @@ export type NestedCssProperties = Nested<CssProperties>
 
 export type SystemStyleObject = Nested<(SystemProperties | GenericProperties) & CssVarProperties>
 
-export type GlobalStyleObject = {
+export interface GlobalStyleObject {
   [selector: string]: SystemStyleObject
 }
+export interface ExtendableGlobalStyleObject {
+  [selector: string]: SystemStyleObject | undefined
+  extend?: GlobalStyleObject | undefined
+}
 
-export type CompositionStyleObject<Property extends string> = Nested<{
-  [K in Property]?: K extends keyof SystemStyleObject ? SystemStyleObject[K] : unknown
-}>
+type FilterStyleObject<P extends string> = {
+  [K in P]?: K extends keyof SystemStyleObject ? SystemStyleObject[K] : unknown
+}
+
+export type CompositionStyleObject<Property extends string> = Nested<FilterStyleObject<Property> & CssVarProperties>
 
 /* -----------------------------------------------------------------------------
  * Jsx style props
  * -----------------------------------------------------------------------------*/
-type WithCss = { css?: SystemStyleObject }
-type StyleProps = SystemProperties & MinimalNested<SystemStyleObject>
+interface WithCss {
+  css?: SystemStyleObject
+}
+type StyleProps = SystemStyleObject & WithCss
 
 export type JsxStyleProps = StyleProps & WithCss
 
-export type DistributiveOmit<T, K extends keyof any> = T extends unknown ? Omit<T, K> : never
-
-export type Assign<T, U> = {
-  [K in keyof T]: K extends keyof U ? U[K] : T[K]
-} & U
-
-export type PatchedHTMLProps = {
+export interface PatchedHTMLProps {
   htmlWidth?: string | number
   htmlHeight?: string | number
   htmlTranslate?: 'yes' | 'no' | undefined

@@ -1,23 +1,27 @@
-import { useState } from 'react'
+import { EXAMPLES, Example } from '@/src/components/Examples/data'
+import { parseState } from '@/src/lib/parse-state'
+import { SplitterRootProps } from '@ark-ui/react'
+import { startTransition, useDeferredValue, useRef, useState } from 'react'
 import { Layout } from '../components/LayoutControl'
-import { SplitterProps, useToast } from '@ark-ui/react'
+import { toast } from '../components/ToastProvider'
 
-export type State = {
+export interface State {
   code: string
   config: string
+  css: string
+  id?: string | null
 }
 
-export type UsePlayGroundProps = {
+export interface UsePlayGroundProps {
   initialState?: State | null
+  diffState?: State | null
 }
 
 export const usePlayground = (props: UsePlayGroundProps) => {
-  const { initialState } = props
   const [layout, setLayout] = useState<Extract<Layout, 'horizontal' | 'vertical'>>('horizontal')
   const [isPristine, setIsPristine] = useState(true)
   const [isSharing, setIsSharing] = useState(false)
   const [isResponsive, setIsResponsive] = useState(false)
-  const toast = useToast()
 
   const [panels, setPanels] = useState([
     { id: 'left', size: 50, minSize: 15 },
@@ -28,7 +32,7 @@ export const usePlayground = (props: UsePlayGroundProps) => {
 
   const layoutValue = isPreviewMode ? ('preview' as const) : layout
 
-  const onResizePanels: SplitterProps['onResize'] = (e) => setPanels(e.size as any)
+  const onResizePanels: SplitterRootProps['onSizeChange'] = (e) => setPanels(e.size as any)
 
   function setPanelSize(id: string, size: number) {
     setPanels((prevPanels) => {
@@ -57,54 +61,24 @@ export const usePlayground = (props: UsePlayGroundProps) => {
     }
   }
 
-  const [state, setState] = useState(
-    initialState
-      ? initialState
-      : {
-          code: `import { css } from 'styled-system/css'
+  const { code, config } = EXAMPLES.find((example) => example.id === 'css')!
 
-export const App = () => {
-  return (
-    <>
-      <button
-        className={css({
-          color: 'red.400',
-        })}
-      >
-        Hello world
-      </button>
-    </>
-  )
-}
-`,
-          config: `import { defineConfig } from '@pandacss/dev';
+  const example = {
+    code,
+    config,
+  }
 
-export const config = defineConfig({
-  theme: { extend: {} },
-  globalCss: {
-    html: {
-      h: 'full',
-    },
-    body: {
-      bg: { base: 'white', _dark: '#2C2C2C' },
-    },
-  },
-  jsxFramework: 'react',
-});    
-          
-`,
-        },
-  )
+  const pristineState = useRef(props.initialState)
+  const [state, setState] = useState(props.initialState ?? parseState(example))
+  const deferredState = useDeferredValue(state)
+  const [diffState, setDiffState] = useState(props.diffState)
 
   function copyCurrentURI() {
     const currentURI = window.location.href
-    navigator.clipboard.writeText(currentURI).then(() => {
-      // Current URI successfully copied to clipboard
-      console.log('Current URI copied to clipboard:', currentURI)
-    })
+    navigator.clipboard.writeText(currentURI)
   }
 
-  const onShare = async () => {
+  const share = async ({ onDone }: { onDone: (id: string) => void }) => {
     setIsSharing(true)
     fetch('/api/share', {
       method: 'POST',
@@ -115,12 +89,11 @@ export const config = defineConfig({
     })
       .then((response) => response.json())
       .then(({ data }) => {
-        history.pushState({ id: data.id }, '', data.id)
+        onDone(data.id)
         copyCurrentURI()
         toast.success({
           title: 'Playground saved.',
           description: 'Link copied to clipboard.',
-          placement: 'top',
           duration: 3000,
         })
         setIsPristine(true)
@@ -130,11 +103,45 @@ export const config = defineConfig({
         toast.error({
           title: 'Could not save playground.',
           description: 'Please try again.',
-          placement: 'top',
           duration: 3000,
         })
         setIsSharing(false)
       })
+  }
+
+  const onShare = async () => {
+    share({
+      onDone(id) {
+        history.pushState({ id }, '', id)
+        setState((prev) => Object.assign({}, prev, { id }))
+      },
+    })
+    pristineState.current = state
+  }
+
+  const onShareDiff = () => {
+    if (!state.id) return
+
+    share({
+      onDone(id) {
+        history.pushState({ id }, '', `${state.id}/${id}`)
+        if (!pristineState.current) return
+        setDiffState(Object.assign({}, state, { id }))
+        setState(pristineState.current)
+      },
+    })
+  }
+
+  const setExample = (_example: Example) => {
+    const example = EXAMPLES.find((example) => example.id === _example)
+    if (!example) return
+    setIsPristine(true)
+    setState(
+      parseState({
+        code: example.code,
+        config: example.config,
+      }),
+    )
   }
 
   return {
@@ -145,13 +152,20 @@ export const config = defineConfig({
     panels,
     onResizePanels,
     switchLayout,
-    state,
+    state: deferredState,
     setState: (newState: State) => {
       setIsPristine(false)
-      setState(newState)
+      startTransition(() => {
+        setState(newState)
+      })
     },
+    setExample,
     onShare,
+    onShareDiff,
+    diffState,
     isSharing,
     isResponsive,
   }
 }
+
+export type UsePlayground = ReturnType<typeof usePlayground>

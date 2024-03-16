@@ -1,9 +1,10 @@
+import type { Context } from '@pandacss/core'
 import { capitalize, unionType } from '@pandacss/shared'
 import { outdent } from 'outdent'
 import pluralize from 'pluralize'
-import type { Context } from '../../engines'
 
 const categories = [
+  'aspectRatios',
   'zIndex',
   'opacity',
   'colors',
@@ -17,6 +18,7 @@ const categories = [
   'spacing',
   'radii',
   'borders',
+  'borderWidths',
   'durations',
   'easings',
   'animations',
@@ -34,26 +36,29 @@ export function generateTokenTypes(ctx: Context) {
 
   const set = new Set<string>()
 
-  set.add(`export type Token = ${tokens.isEmpty ? 'string' : unionType(tokens.allNames)}`)
+  set.add(`export type Token = ${tokens.isEmpty ? 'string' : unionType(Array.from(tokens.byName.keys()))}`)
 
   const result = new Set<string>(['export type Tokens = {'])
 
   if (tokens.isEmpty) {
     result.add('[token: string]: string')
   } else {
-    const colorPaletteKeys = Object.keys(tokens.colorPalettes)
+    const colorPaletteKeys = Array.from(tokens.view.colorPalettes.keys())
     if (colorPaletteKeys.length) {
-      set.add(`export type ColorPalette = ${unionType(Object.keys(tokens.colorPalettes))}`)
+      set.add(`export type ColorPalette = ${unionType(colorPaletteKeys)}`)
     }
 
-    for (const [key, value] of tokens.categoryMap.entries()) {
+    for (const [key, value] of tokens.view.categoryMap.entries()) {
       const typeName = capitalize(pluralize.singular(key))
       set.add(`export type ${typeName}Token = ${unionType(value.keys())}`)
       result.add(`\t\t${key}: ${typeName}Token`)
     }
 
-    if (theme?.keyframes) set.add(`export type AnimationName = ${unionType(Object.keys(theme.keyframes))}`)
-    result.add(`\t\tanimationName: AnimationName`)
+    const keyframes = Object.keys(theme?.keyframes ?? {})
+    if (keyframes.length) {
+      set.add(`export type AnimationName = ${unionType(keyframes)}`)
+      result.add(`\t\tanimationName: AnimationName`)
+    }
   }
 
   result.add('} & { [token: string]: never }')

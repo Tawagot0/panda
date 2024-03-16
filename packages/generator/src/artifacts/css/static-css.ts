@@ -1,43 +1,18 @@
-import { getStaticCss } from '@pandacss/core'
-import type { Context } from '../../engines'
+import type { Context } from '@pandacss/core'
+import type { Stylesheet } from '@pandacss/core'
 
-export const generateStaticCss = (ctx: Context) => {
-  const { config, createSheet, utility, recipes } = ctx
-  const { staticCss = {}, theme = {}, optimize = true } = config
+export const generateStaticCss = (ctx: Context, sheet?: Stylesheet) => {
+  const { config, staticCss } = ctx
+  const engine = staticCss.process(ctx.config.staticCss ?? {}, sheet)
 
-  const sheet = createSheet()
-  const fn = getStaticCss(staticCss)
+  if (!sheet) {
+    const { optimize = true, minify } = config
+    let css = engine.sheet.toCss({ optimize, minify })
 
-  const results = fn({
-    breakpoints: Object.keys(theme.breakpoints ?? {}),
-    getPropertyKeys: (prop: string) => {
-      const propConfig = utility.config[prop]
-      if (!propConfig) return []
+    if (ctx.hooks['cssgen:done']) {
+      css = ctx.hooks['cssgen:done']({ artifact: 'static', content: css }) ?? css
+    }
 
-      const values = utility.getPropertyValues(propConfig)
-      if (!values) return []
-
-      return Object.keys(values)
-    },
-    getRecipeKeys: (recipe) => {
-      const recipeConfig = recipes.details.find((detail) => detail.baseName === recipe)
-      return Object.assign({ __base: recipeConfig?.config.base }, recipeConfig?.variantKeyMap ?? {})
-    },
-  })
-
-  results.css.forEach((css) => {
-    sheet.processAtomic(css)
-  })
-
-  results.recipes.forEach((result) => {
-    Object.entries(result).forEach(([name, value]) => {
-      const recipeConfig = recipes.getConfig(name)
-      if (!recipeConfig) return
-      sheet.processRecipe(name, recipeConfig, value)
-    })
-  })
-
-  const output = sheet.toCss({ optimize })
-  ctx.hooks.callHook('generator:css', 'static.css', output)
-  return output
+    return css
+  }
 }

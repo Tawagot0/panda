@@ -1,8 +1,8 @@
+import type { Context } from '@pandacss/core'
 import { outdent } from 'outdent'
-import type { Context } from '../../engines'
 
 export function generateQwikJsxStringLiteralTypes(ctx: Context) {
-  const { factoryName, styleProps, componentName, upperName, typeName } = ctx.jsx
+  const { factoryName, componentName, upperName, typeName } = ctx.jsx
 
   return {
     jsxFactory: outdent`
@@ -12,27 +12,31 @@ export declare const ${factoryName}: ${upperName}
     jsxType: outdent`
 import type { Component, QwikIntrinsicElements } from '@builder.io/qwik'
 
-type ElementType = keyof QwikIntrinsicElements | Component<any>
+export type ElementType = keyof QwikIntrinsicElements | Component<any>
 
-type ComponentProps<T extends ElementType> = T extends keyof QwikIntrinsicElements
+export type ComponentProps<T extends ElementType> = T extends keyof QwikIntrinsicElements
   ? QwikIntrinsicElements[T]
   : T extends Component<infer P>
   ? P
   : never
 
-type Dict = Record<string, unknown>
+interface Dict {
+  [k: string]: unknown
+}
 
 export type ${componentName}<T extends ElementType> = {
   (args: { raw: readonly string[] | ArrayLike<string> }): (props: ComponentProps<T>) => JSX.Element
 }
 
-interface JsxFactory {
+export interface JsxFactory {
   <T extends ElementType>(component: T): ${componentName}<T>
 }
 
-type JsxElements = { [K in keyof QwikIntrinsicElements]: ${componentName}<K> }
+export type JsxElements = {
+  [K in keyof QwikIntrinsicElements]: ${componentName}<K>
+}
 
-export type ${upperName} = JsxFactory ${styleProps === 'none' ? '' : '& JsxElements'}
+export type ${upperName} = JsxFactory & JsxElements
 
 export type ${typeName}<T extends ElementType> = ComponentProps<T>
   `,

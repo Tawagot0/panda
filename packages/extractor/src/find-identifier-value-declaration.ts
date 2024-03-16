@@ -1,4 +1,12 @@
-import { Identifier, Node } from 'ts-morph'
+import {
+  BindingElement,
+  EnumDeclaration,
+  FunctionDeclaration,
+  Identifier,
+  Node,
+  ParameterDeclaration,
+  VariableDeclaration,
+} from 'ts-morph'
 import { getExportedVarDeclarationWithName, getModuleSpecifierSourceFile } from './maybe-box-node'
 import type { BoxContext } from './types'
 
@@ -13,7 +21,11 @@ export function isScope(node: Node): boolean {
 
 // adapted from https://github.com/dsherret/ts-morph/issues/1351
 
-export function getDeclarationFor(node: Identifier, stack: Node[], ctx: BoxContext) {
+export function getDeclarationFor(
+  node: Identifier,
+  stack: Node[],
+  ctx: BoxContext,
+): VariableDeclaration | ParameterDeclaration | FunctionDeclaration | EnumDeclaration | BindingElement | undefined {
   const parent = node.getParent()
   if (!parent) return
 
@@ -25,6 +37,7 @@ export function getDeclarationFor(node: Identifier, stack: Node[], ctx: BoxConte
     (Node.isVariableDeclaration(parent) ||
       Node.isParameterDeclaration(parent) ||
       Node.isFunctionDeclaration(parent) ||
+      Node.isEnumDeclaration(parent) ||
       Node.isBindingElement(parent)) &&
     parent.getNameNode() == node
   ) {
@@ -80,7 +93,7 @@ export function findIdentifierValueDeclaration(
     if (!scope) return
 
     const refName = identifier.getText()
-    // eslint-disable-next-line @typescript-eslint/no-loop-func
+
     scope.forEachDescendant((node, traversal) => {
       if (visitedsWithStack.has(node)) {
         traversal.skip()

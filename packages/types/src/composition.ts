@@ -1,12 +1,12 @@
 import type { CompositionStyleObject } from './system-types'
 
-type Recursive<T> = {
-  [key: string]: Recursive<T> | T
+interface Token<T> {
+  value: T
+  description?: string
 }
 
-export type Token<Value = any> = {
-  value: Value
-  description?: string
+interface Recursive<T> {
+  [key: string]: Recursive<T> | T
 }
 
 /* -----------------------------------------------------------------------------
@@ -104,7 +104,7 @@ export type LayerStyle = CompositionStyleObject<LayerStyleProperty>
 
 export type LayerStyles = Recursive<Token<LayerStyle>>
 
-export type CompositionStyles = {
+export interface CompositionStyles {
   textStyles: TextStyles
   layerStyles: LayerStyles
 }

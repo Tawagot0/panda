@@ -50,15 +50,42 @@ Whether to opt-out of the defaults config presets: [`@pandacss/preset-base`, `@p
 
 ### preflight
 
-**Type**: `boolean`
+**Type**: `boolean` | `{ scope: string; }`
 
-**Default**: `true`
+**Default**: `false`
 
 Whether to enable css reset styles.
+
+Enable preflight:
 
 ```json
 {
   "preflight": true
+}
+```
+
+You can also scope the preflight; Especially useful for being able to scope the CSS reset to only a part of the app for some reason.
+
+Enable preflight and customize the scope:
+
+```json
+{
+  "preflight": { "scope": ".extension" }
+}
+```
+
+The resulting `reset` css would look like this:
+
+```css
+.extension button,
+.extension select {
+  text-transform: none;
+}
+
+.extension table {
+  text-indent: 0;
+  border-color: inherit;
+  border-collapse: collapse;
 }
 ```
 
@@ -214,7 +241,7 @@ Hash the class names and css variables:
 
 ```json
 {
-  "hash": false
+  "hash": true
 }
 ```
 
@@ -271,29 +298,6 @@ Then the result looks like this:
 ```
 
 ## File system options
-
-### emitPackage
-
-**Type**: `boolean`
-
-**Default**: `false`
-
-Whether to emit the artifacts to `node_modules` as a package. Will generate a `package.json` file that contains exports
-for each of the the generated `outdir` entrypoints:
-
-- `styled-system/css`
-- `styled-system/jsx`
-- `styled-system/patterns`
-- `styled-system/recipes`
-- `styled-system/tokens`
-- `styled-system/types`
-- `styled-system/styles.css`
-
-```json
-{
-  "emitPackage": true
-}
-```
 
 ### gitignore
 
@@ -359,6 +363,48 @@ The output directory for the generated css.
 }
 ```
 
+### importMap
+
+**Type**: `string | Partial<OutdirImportMap>`
+
+**Default**: `{ "css": "styled-system/css", "recipes": "styled-system/recipes", "patterns": "styled-system/patterns", "jsx": "styled-system/jsx" }`
+
+Allows you to customize the import paths for the generated outdir.
+
+```json
+{
+  "importMap": {
+    "css": "@acme/styled-system",
+    "recipes": "@acme/styled-system",
+    "patterns": "@acme/styled-system",
+    "jsx": "@acme/styled-system"
+  }
+}
+```
+
+You can also use a string to customize the base import path and keep the default entrypoints:
+
+```json
+{
+  "importMap": "@scope/styled-system"
+}
+```
+
+is the equivalent of:
+
+```json
+{
+  "importMap": {
+    "css": "@scope/styled-system/css",
+    "recipes": "@scope/styled-system/recipes",
+    "patterns": "@scope/styled-system/patterns",
+    "jsx": "@scope/styled-system/jsx"
+  }
+}
+```
+
+Check out the [Component Library](/docs/guides/component-library) guide for more information on how to use the `importMap` option.
+
 ### include
 
 **Type**: `string[]`
@@ -384,6 +430,23 @@ List of files glob to ignore.
 ```json
 {
   "exclude": []
+}
+```
+
+### dependencies
+
+**Type**: `string[]`
+
+**Default**: `[]`
+
+Explicit list of config related files that should trigger a context reload on change.
+
+> We automatically track the config file and (transitive) files imported by the config file as much as possible, but
+> sometimes we might miss some. You can use this option as a workaround for those edge cases.
+
+```json
+{
+  "dependencies": ["path/to/files/**.ts"]
 }
 ```
 
@@ -475,6 +538,48 @@ const Container = styled.div`
   background-color: gainsboro;
   padding: 10px 15px;
 `
+```
+
+### lightningcss
+
+**Type**: `boolean`
+
+**Default**: `false`
+
+Whether to use `lightningcss` instead of `postcss` for css optimization.
+
+```json
+{
+  "lightningcss": true
+}
+```
+
+### browserslist
+
+**Type**: `string[]`
+
+**Default**: `[]`
+
+Browserslist query to target specific browsers. Only used when `lightningcss` is set to `true`.
+
+```json
+{
+  "browserslist": ["last 2 versions", "not dead", "not < 2%"]
+}
+```
+
+### polyfill
+
+**Type**: `boolean`
+
+**Default**: `false`
+
+Polyfill CSS @layers at-rules for older browsers.
+
+```json
+{
+  "polyfill": true
+}
 ```
 
 ## Design token options
@@ -673,7 +778,7 @@ Used to generate css utility classes for your project.
 
 **Default**: `false`
 
-Only allow token values and prevent custom or raw CSS values.
+Only allow token values and prevent custom or raw CSS values. Will only affect properties that have config tokens, such as `color`, `bg`, `borderColor`, etc. [Learn more.](/docs/concepts/writing-styles#type-safety)
 
 ```json
 {
@@ -681,11 +786,26 @@ Only allow token values and prevent custom or raw CSS values.
 }
 ```
 
+### strictPropertyValues
+
+**Type**: `boolean`
+
+**Default**: `false`
+
+Only use valid CSS values for properties that do have a predefined list of values. Will throw for properties that do not have config tokens, such as
+`display`, `content`, `willChange`, etc. [Learn more.](/docs/concepts/writing-styles#type-safety)
+
+```json
+{
+  "strictPropertyValues": false
+}
+```
+
 ## JSX options
 
 ### jsxFramework
 
-**Type**: `'react' | 'solid' | 'preact' | 'vue' | 'qwik'`
+**Type**: `'react' | 'solid' | 'preact' | 'vue' | 'qwik' | (string & {})`
 
 JS Framework for generated JSX elements.
 
@@ -776,4 +896,58 @@ The log level for the built-in logger.
 {
   "logLevel": "info"
 }
+```
+
+### validation
+
+**Type**: `'none' | 'warn' | 'error'`
+
+**Default**: `warn`
+
+The validation strictness to use when validating the config.
+
+- When set to 'none', no validation will be performed.
+- When set to 'warn', warnings will be logged when validation fails.
+- When set to 'error', errors will be thrown when validation fails.
+
+```json
+{
+  "validation": "error"
+}
+```
+
+## Other options
+
+### Hooks
+
+**Type**: `PandaHooks`
+
+Panda provides a set of callbacks that you can hook into for more advanced use cases. Check the [Hooks](/docs/concepts/hooks) docs for more information.
+
+### Plugins
+
+**Type**: `PandaPlugin[]`
+
+Plugins are currently simple objects that contain a `name` and a `hooks` object with the same structure as the `hooks` object in the config.
+
+They will be called in sequence in the order they are defined in the `plugins` array, with the user's config called last.
+
+```ts
+import { defineConfig } from '@pandacss/dev'
+
+export default defineConfig({
+  // ...
+  plugins: [
+    {
+      name: 'token-format',
+      hooks: {
+        'tokens:created': ({ configure }) => {
+          configure({
+            formatTokenName: path => '$' + path.join('-')
+          })
+        }
+      }
+    }
+  ]
+})
 ```

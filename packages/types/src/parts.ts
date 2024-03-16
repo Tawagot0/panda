@@ -1,5 +1,7 @@
-export type Part = {
+export interface Part {
   selector: string
 }
 
-export type Parts = Record<string, Part>
+export interface Parts {
+  [key: string]: Part
+}

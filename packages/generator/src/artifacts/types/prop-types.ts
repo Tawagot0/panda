@@ -1,21 +1,16 @@
+import type { Context } from '@pandacss/core'
 import { outdent } from 'outdent'
-import type { Context } from '../../engines'
 
 export function generatePropTypes(ctx: Context) {
-  const {
-    config: { strictTokens },
-    utility,
-  } = ctx
+  const { utility } = ctx
 
-  const strictText = `${strictTokens ? '' : ' | CssValue<T>'}`
-
-  const result: string[] = [
+  const result = [
     outdent`
-    ${ctx.file.importType('ConditionalValue', './conditions')}
+    ${ctx.file.importType('Conditional', './conditions')}
     ${ctx.file.importType('CssProperties', './system-types')}
     ${ctx.file.importType('Tokens', '../tokens/index')}
 
-    type PropertyValueTypes  = {`,
+    export interface UtilityValues {`,
   ]
 
   const types = utility.getTypes()
@@ -26,27 +21,46 @@ export function generatePropTypes(ctx: Context) {
 
   result.push('}', '\n')
 
-  result.push(`
-  type CssValue<T> = T extends keyof CssProperties ? CssProperties[T] : never
-
-  type Shorthand<T> = T extends keyof PropertyValueTypes ? PropertyValueTypes[T]${strictText} : CssValue<T>
-
-  export type PropertyTypes = PropertyValueTypes & {
-  `)
-
-  utility.shorthands.forEach((value, key) => {
-    result.push(`\t${key}: Shorthand<${JSON.stringify(value)}>;`)
-  })
-
-  result.push('}')
-
   return outdent`
   ${result.join('\n')}
 
-  export type PropertyValue<T extends string> = T extends keyof PropertyTypes
-    ? ConditionalValue<PropertyTypes[T]${strictText}${!ctx.config.strictTokens ? ' | (string & {})' : ''}>
-    : T extends keyof CssProperties
-    ? ConditionalValue<CssProperties[T]${!ctx.config.strictTokens ? ' | (string & {})' : ''}>
-    : ConditionalValue<string | number>
+  type WithColorOpacityModifier<T> = T extends string ? \`$\{T}/\${string}\` : T
+
+  type ImportantMark = "!" | "!important"
+  type WhitespaceImportant = \` \${ImportantMark}\`
+  type Important = ImportantMark | WhitespaceImportant
+  type WithImportant<T> = T extends string ? \`\${T}\${Important}\${string}\` : T
+
+  /**
+   * Only relevant when using \`strictTokens\` or \`strictPropertyValues\` in your config.
+   * - Allows you to use an escape hatch (e.g. \`[123px]\`) to use any string as a value.
+   * - Allows you to use a color opacity modifier (e.g. \`red/300\`) with known color values.
+   * - Allows you to use an important mark (e.g. \`!\` or \`!important\`) in the value.
+   *
+   * This is useful when you want to use a value that is not defined in the config or want to opt-out of the defaults.
+   *
+   * @example
+   * css({
+   *   fontSize: '[123px]', // ⚠️ will not throw even if you haven't defined 123px as a token
+   * })
+   *
+   * @see https://panda-css.com/docs/concepts/writing-styles#stricttokens
+   * @see https://panda-css.com/docs/concepts/writing-styles#strictpropertyvalues
+   */
+  export type WithEscapeHatch<T> = T | \`[\${string}]\` | (T extends string ? WithColorOpacityModifier<string> | WithImportant<T> : T)
+
+  /**
+   * Will restrict the value of properties that have predefined values to those values only.
+   *
+   * @example
+   * css({
+   *   display: 'abc', // ❌ will throw
+   * })
+   *
+   * @see https://panda-css.com/docs/concepts/writing-styles#strictpropertyvalues
+   */
+  export type OnlyKnown<Key, Value> = Value extends boolean
+    ? Value
+    : Value extends \`\${infer _}\` ? Value : never
   `
 }

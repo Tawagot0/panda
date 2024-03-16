@@ -7,17 +7,23 @@ export interface InitCommandFlags
   silent?: boolean
   interactive?: boolean
   config?: string
+  logfile?: string
 }
 
 export interface CssGenCommandFlags {
   silent?: boolean
   clean?: boolean
   outfile?: string
+  minimal?: boolean
   watch?: boolean
   poll?: boolean
   cwd?: string
   config?: string
   minify?: boolean
+  lightningcss?: boolean
+  polyfill?: boolean
+  cpuProf?: boolean
+  logfile?: string
 }
 
 export interface StudioCommandFlags extends Pick<Config, 'cwd'> {
@@ -25,6 +31,9 @@ export interface StudioCommandFlags extends Pick<Config, 'cwd'> {
   preview?: boolean
   config?: string
   outdir?: string
+  port?: string
+  host?: boolean
+  base?: string
 }
 
 export interface AnalyzeCommandFlags {
@@ -40,6 +49,9 @@ export interface DebugCommandFlags {
   outdir?: string
   cwd?: string
   config?: string
+  onlyConfig?: boolean
+  cpuProf?: boolean
+  logfile?: string
 }
 
 export interface ShipCommandFlags {
@@ -48,15 +60,19 @@ export interface ShipCommandFlags {
   outfile?: string
   cwd?: string
   config?: string
+  watch?: boolean
+  poll?: boolean
 }
 
-export type CodegenCommandFlags = Pick<Config, 'cwd' | 'poll' | 'watch'> & {
+export interface CodegenCommandFlags extends Pick<Config, 'cwd' | 'poll' | 'watch'> {
   clean?: boolean
   silent?: boolean
   config?: string
+  cpuProf?: boolean
+  logfile?: string
 }
 
-export type MainCommandFlags = Pick<Config, 'cwd' | 'poll' | 'watch'> & {
+export interface MainCommandFlags extends Pick<Config, 'cwd' | 'poll' | 'watch'> {
   outdir?: string
   minify?: boolean
   config?: string
@@ -66,4 +82,14 @@ export type MainCommandFlags = Pick<Config, 'cwd' | 'poll' | 'watch'> & {
   exclude?: string[]
   hash?: boolean
   emitTokensOnly?: boolean
+  lightningcss?: boolean
+  polyfill?: boolean
+  cpuProf?: boolean
+  logfile?: string
+}
+
+export interface EmitPackageCommandFlags {
+  outdir: string
+  silent?: boolean
+  cwd: string
 }

@@ -6,15 +6,15 @@ export type MappedObject<T, K> = {
   [Prop in keyof T]: T[Prop] extends Array<any>
     ? MappedObject<T[Prop][number], K>[]
     : T[Prop] extends Record<string, unknown>
-    ? MappedObject<T[Prop], K>
-    : K
+      ? MappedObject<T[Prop], K>
+      : K
 }
 
 export type WalkObjectStopFn = (value: any, path: string[]) => boolean
 
-export type WalkObjectOptions = {
+export interface WalkObjectOptions {
   stop?: WalkObjectStopFn
-  getKey?(prop: string): string
+  getKey?(prop: string, value: any): string
 }
 
 type Nullable<T> = T | null | undefined
@@ -31,7 +31,7 @@ export function walkObject<T, K>(
     if (isObject(value) || Array.isArray(value)) {
       const result: Record<string, string> = {}
       for (const [prop, child] of Object.entries(value)) {
-        const key = getKey?.(prop) ?? prop
+        const key = getKey?.(prop, child) ?? prop
         const childPath = [...path, key]
         if (stop?.(value, childPath)) {
           return predicate(value, path)
@@ -52,6 +52,7 @@ export function walkObject<T, K>(
 }
 
 export function mapObject(obj: any, fn: (value: any) => any) {
+  if (Array.isArray(obj)) return obj.map((value) => fn(value))
   if (!isObject(obj)) return fn(obj)
   return walkObject(obj, (value) => fn(value))
 }

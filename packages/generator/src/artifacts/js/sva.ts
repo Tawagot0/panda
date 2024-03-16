@@ -1,17 +1,20 @@
+import type { Context } from '@pandacss/core'
 import { outdent } from 'outdent'
-import type { Context } from '../../engines'
 
 export function generateSvaFn(ctx: Context) {
   return {
     js: outdent`
-    ${ctx.file.import('getSlotRecipes, splitProps', '../helpers')}
+    ${ctx.file.import('getSlotRecipes, memo, splitProps', '../helpers')}
     ${ctx.file.import('cva', './cva')}
+    ${ctx.file.import('cx', './cx')}
+
+    const slotClass = (className, slot) => className + '__' + slot
 
     export function sva(config) {
       const slots = Object.entries(getSlotRecipes(config)).map(([slot, slotCva]) => [slot, cva(slotCva)])
 
       function svaFn(props) {
-        const result = slots.map(([slot, cvaFn]) => [slot, cvaFn(props)])
+        const result = slots.map(([slot, cvaFn]) => [slot, cx(cvaFn(props), config.className && slotClass(config.className, slot))])
         return Object.fromEntries(result)
       }
 
@@ -31,7 +34,7 @@ export function generateSvaFn(ctx: Context) {
         Object.entries(variants).map(([key, value]) => [key, Object.keys(value)])
       );
 
-      return Object.assign(svaFn, {
+      return Object.assign(memo(svaFn), {
         __cva__: false,
         raw,
         variantMap,

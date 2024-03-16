@@ -1,11 +1,8 @@
+import type { Context } from '@pandacss/core'
 import { outdent } from 'outdent'
-import type { Context } from '../../engines'
 
 export function generateStringLiteralCssFn(ctx: Context) {
-  const {
-    utility,
-    config: { hash, prefix },
-  } = ctx
+  const { utility, hash, prefix } = ctx
 
   const { separator } = utility
 
@@ -14,8 +11,8 @@ export function generateStringLiteralCssFn(ctx: Context) {
     export declare function css(template: { raw: readonly string[] | ArrayLike<string> }): string
     `,
     js: outdent`
-    ${ctx.file.import('astish, createCss, withoutSpace', '../helpers')}
-    ${ctx.file.import('sortConditions, finalizeConditions', './conditions')}
+    ${ctx.file.import('astish, createCss, isObject, mergeProps, withoutSpace', '../helpers')}
+    ${ctx.file.import('finalizeConditions, sortConditions', './conditions')}
 
     function transform(prop, value) {
       const className = \`$\{prop}${separator}$\{withoutSpace(value)}\`
@@ -23,16 +20,17 @@ export function generateStringLiteralCssFn(ctx: Context) {
     }
 
     const context = {
-      hash: ${hash ? 'true' : 'false'},
+      hash: ${hash.className ? 'true' : 'false'},
       conditions: {
         shift: sortConditions,
         finalize: finalizeConditions,
         breakpoints: { keys: [] },
       },
       utility: {
-        prefix: ${prefix ? JSON.stringify(prefix) : undefined},
+        prefix: ${prefix.className ? JSON.stringify(prefix.className) : undefined},
         transform,
         hasShorthand: false,
+        toHash: ${utility.toHash},
         resolveShorthand(prop) {
           return prop
         },
@@ -41,9 +39,9 @@ export function generateStringLiteralCssFn(ctx: Context) {
 
     const cssFn = createCss(context)
 
-    export const css = (str) => {
-      return cssFn(astish(str[0]))
-    }
+    const fn = (style) => (isObject(style) ? style : astish(style[0]))
+    export const css = (...styles) => cssFn(mergeProps(...styles.filter(Boolean).map(fn)))
+    css.raw = (...styles) => mergeProps(...styles.filter(Boolean).map(fn))
     `,
   }
 }

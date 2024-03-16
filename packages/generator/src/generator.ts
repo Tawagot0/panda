@@ -1,68 +1,67 @@
-import type { ConfigResultWithHooks, TSConfig } from '@pandacss/types'
+import { Context, type StyleDecoder, type Stylesheet } from '@pandacss/core'
+import type { ArtifactId, CssArtifactType, LoadConfigResult } from '@pandacss/types'
+import { match } from 'ts-pattern'
 import { generateArtifacts } from './artifacts'
-import { generateFlattenedCss } from './artifacts/css/flat-css'
+import { generateGlobalCss } from './artifacts/css/global-css'
+import { generateKeyframeCss } from './artifacts/css/keyframe-css'
 import { generateParserCss } from './artifacts/css/parser-css'
-import { getEngine } from './engines'
-import { getMessages } from './messages'
+import { generateResetCss } from './artifacts/css/reset-css'
+import { generateStaticCss } from './artifacts/css/static-css'
+import { generateTokenCss } from './artifacts/css/token-css'
 
-const defaults = (conf: ConfigResultWithHooks): ConfigResultWithHooks => ({
-  ...conf,
-  config: {
-    cssVarRoot: ':where(:root, :host)',
-    jsxFactory: 'styled',
-    jsxStyleProps: 'all',
-    outExtension: 'mjs',
-    shorthands: true,
-    syntax: 'object-literal',
-    ...conf.config,
-    layers: {
-      reset: 'reset',
-      base: 'base',
-      tokens: 'tokens',
-      recipes: 'recipes',
-      utilities: 'utilities',
-      ...conf.config.layers,
-    },
-  },
-})
+export class Generator extends Context {
+  constructor(conf: LoadConfigResult) {
+    super(conf)
+  }
 
-const getImportMap = (outdir: string) => ({
-  css: [outdir, 'css'],
-  recipe: [outdir, 'recipes'],
-  pattern: [outdir, 'patterns'],
-  jsx: [outdir, 'jsx'],
-})
+  getArtifacts = (ids?: ArtifactId[] | undefined) => {
+    return generateArtifacts(this, ids)
+  }
 
-export const createGenerator = (conf: ConfigResultWithHooks) => {
-  const ctx = getEngine(defaults(conf))
-  const { config, jsx, isValidProperty, patterns, recipes } = ctx
+  appendCssOfType = (type: CssArtifactType, sheet: Stylesheet) => {
+    match(type)
+      .with('preflight', () => generateResetCss(this, sheet))
+      .with('tokens', () => generateTokenCss(this, sheet))
+      .with('static', () => generateStaticCss(this, sheet))
+      .with('global', () => generateGlobalCss(this, sheet))
+      .with('keyframes', () => generateKeyframeCss(this, sheet))
+      .otherwise(() => {
+        throw new Error(`Unknown css artifact type <${type}>`)
+      })
+  }
 
-  const compilerOptions = (conf.tsconfig as TSConfig)?.compilerOptions ?? {}
-  const baseUrl = compilerOptions.baseUrl ?? ''
+  appendLayerParams = (sheet: Stylesheet) => {
+    sheet.layers.root.prepend(sheet.layers.params)
+  }
 
-  const cwd = conf.config.cwd
-  const relativeBaseUrl = baseUrl !== cwd ? baseUrl.replace(cwd, '').slice(1) : cwd
+  appendBaselineCss = (sheet: Stylesheet) => {
+    if (this.config.preflight) this.appendCssOfType('preflight', sheet)
+    if (!this.tokens.isEmpty) this.appendCssOfType('tokens', sheet)
+    this.appendCssOfType('static', sheet)
+    this.appendCssOfType('global', sheet)
+    if (this.config.theme?.keyframes) this.appendCssOfType('keyframes', sheet)
+  }
 
-  return {
-    ...ctx,
-    getArtifacts: generateArtifacts(ctx),
-    getCss: generateFlattenedCss(ctx),
-    getParserCss: generateParserCss(ctx),
-    messages: getMessages(ctx),
-    parserOptions: {
-      importMap: getImportMap(config.outdir.replace(relativeBaseUrl, '')),
-      jsx: {
-        factory: jsx.factoryName,
-        styleProps: jsx.styleProps,
-        isStyleProp: isValidProperty,
-        nodes: [...patterns.details, ...recipes.details],
-      },
-      getRecipesByJsxName: recipes.filter,
-      getPatternsByJsxName: patterns.filter,
-      compilerOptions: compilerOptions as any,
-      tsOptions: conf.tsOptions,
-    },
+  appendParserCss = (sheet: Stylesheet) => {
+    const decoder = this.decoder.collect(this.encoder)
+    sheet.processDecoder(decoder)
+  }
+
+  getParserCss = (decoder: StyleDecoder) => {
+    return generateParserCss(this, decoder)
+  }
+
+  getCss = (stylesheet?: Stylesheet) => {
+    const sheet = stylesheet ?? this.createSheet()
+    let css = sheet.toCss({
+      optimize: true,
+      minify: this.config.minify,
+    })
+
+    if (this.hooks['cssgen:done']) {
+      css = this.hooks['cssgen:done']({ artifact: 'styles.css', content: css }) ?? css
+    }
+
+    return css
   }
 }
-
-export type Generator = ReturnType<typeof createGenerator>

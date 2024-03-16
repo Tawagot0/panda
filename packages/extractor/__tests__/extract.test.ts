@@ -22,7 +22,7 @@ const config: Record<string, string[]> = {
 
 const componentsMatcher: ComponentMatchers = {
   matchTag: ({ tagName }) => Boolean(config[tagName]),
-  matchProp: ({ tagName, propName }) => config[tagName].includes(propName),
+  matchProp: ({ tagName, propName }) => config[tagName]?.includes(propName),
 }
 
 type TestExtractOptions = Omit<ExtractOptions, 'ast'> & { tagNameList?: string[]; functionNameList?: string[] }
@@ -1757,6 +1757,78 @@ it('extract JsxAttribute > JsxExpression > ConditonalExpression > Identifier|Val
       ],
     }
   `)
+})
+
+it('extract JsxAttribute > JsxExpression > ConditionalExpression > when true is a 0', () => {
+  expect(
+    extractFromCode(
+      `
+          <div className={css({ opacity: isHovered ? 1 : 0 })}></div>
+      `,
+      {
+        functionNameList: ['css'],
+      },
+    ),
+  ).toMatchInlineSnapshot(`
+      {
+        "css": [
+          {
+            "conditions": [
+              {
+                "0": {
+                  "opacity": 1,
+                },
+              },
+              {
+                "0": {
+                  "opacity": 0,
+                },
+              },
+            ],
+            "raw": [
+              {},
+            ],
+            "spreadConditions": [],
+          },
+        ],
+      }
+    `)
+})
+
+it('extract JsxAttribute > JsxExpression > ConditionalExpression > when false is a 0', () => {
+  expect(
+    extractFromCode(
+      `
+          <div className={css({ opacity: isHovered ? 1 : 0 })}></div>
+      `,
+      {
+        functionNameList: ['css'],
+      },
+    ),
+  ).toMatchInlineSnapshot(`
+      {
+        "css": [
+          {
+            "conditions": [
+              {
+                "0": {
+                  "opacity": 1,
+                },
+              },
+              {
+                "0": {
+                  "opacity": 0,
+                },
+              },
+            ],
+            "raw": [
+              {},
+            ],
+            "spreadConditions": [],
+          },
+        ],
+      }
+    `)
 })
 
 it('extract JsxAttribute > JsxExpression > ElementAccessExpression', () => {
@@ -5786,6 +5858,192 @@ it('extracts arrays without removing nullish values', () => {
                 "red",
               ],
               "display": "flex",
+            },
+          ],
+          "spreadConditions": [],
+        },
+      ],
+    }
+  `)
+})
+
+it('extracts props after a JSX attribute containing a JSX element', () => {
+  expect(
+    extractFromCode(
+      `
+      export const App = () => {
+        return (
+          <>
+            <Flex icon={<svg />} ml="2" />
+            <Stack ml="4" icon={<div />} />
+          </>
+        );
+      };
+          `,
+      { tagNameList: ['Flex', 'Stack'] },
+    ),
+  ).toMatchInlineSnapshot(`
+    {
+      "Flex": [
+        {
+          "conditions": [],
+          "raw": {
+            "ml": "2",
+          },
+          "spreadConditions": [],
+        },
+      ],
+      "Stack": [
+        {
+          "conditions": [],
+          "raw": {
+            "ml": "4",
+          },
+          "spreadConditions": [],
+        },
+      ],
+    }
+  `)
+})
+
+it('extracts props after a JSX spread containing a JSX element', () => {
+  expect(
+    extractFromCode(
+      `
+      export const App = () => {
+        return (
+          <>
+            <Flex {...{ icon: <svg /> }} ml="2" />
+            <Stack ml="4" {...{ icon: <div /> }} />
+          </>
+        );
+      };
+          `,
+      { tagNameList: ['Flex', 'Stack'] },
+    ),
+  ).toMatchInlineSnapshot(`
+    {
+      "Flex": [
+        {
+          "conditions": [],
+          "raw": {
+            "ml": "2",
+          },
+          "spreadConditions": [],
+        },
+      ],
+      "Stack": [
+        {
+          "conditions": [],
+          "raw": {
+            "ml": "4",
+          },
+          "spreadConditions": [],
+        },
+      ],
+    }
+  `)
+})
+
+it('handles TS enum', () => {
+  const code = `import { sva } from 'styled-system/css';
+
+  enum Size {
+    S = 's',
+    L = 'l',
+  };
+
+  enum Color {
+    Red = 'red.400',
+    Blue = 'blue.400',
+  }
+
+  const className = css({ color: Color.Red, backgroundColor: Color["Blue"] })
+
+  const useStyles = sva({
+    slots: ['root'],
+    base: {
+      root: {}
+    },
+    variants: {
+      size: {
+        [Size.S]: {
+          root: {
+            bgColor: 'red'
+          }
+        }
+      }
+    }
+  });`
+
+  expect(extractFromCode(code, { functionNameList: ['css', 'sva'] })).toMatchInlineSnapshot(`
+    {
+      "css": [
+        {
+          "conditions": [],
+          "raw": [
+            {
+              "backgroundColor": "blue.400",
+              "color": "red.400",
+            },
+          ],
+          "spreadConditions": [],
+        },
+      ],
+      "sva": [
+        {
+          "conditions": [],
+          "raw": [
+            {
+              "base": {
+                "root": {},
+              },
+              "slots": [
+                "root",
+              ],
+              "variants": {
+                "size": {
+                  "s": {
+                    "root": {
+                      "bgColor": "red",
+                    },
+                  },
+                },
+              },
+            },
+          ],
+          "spreadConditions": [],
+        },
+      ],
+    }
+  `)
+})
+
+it('can handle TS namespaces', () => {
+  const code = `
+import * as p from "styled-system/patterns"
+
+p.stack({ mt: "40px" })`
+
+  expect(
+    extractFromCode(code, {
+      functions: {
+        matchFn: ({ fnName }) => {
+          const identifier = fnName.split('.')[1]
+          return identifier === 'stack'
+        },
+        matchProp: () => true,
+        matchArg: () => true,
+      },
+    }),
+  ).toMatchInlineSnapshot(`
+    {
+      "p.stack": [
+        {
+          "conditions": [],
+          "raw": [
+            {
+              "mt": "40px",
             },
           ],
           "spreadConditions": [],

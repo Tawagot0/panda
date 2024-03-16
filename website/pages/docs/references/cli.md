@@ -21,6 +21,10 @@ Initialize Panda in a project. This process will:
 
 Whether to run the interactive mode
 
+#### `--force, -f`
+
+Whether to overwrite existing files
+
 #### `--postcss, -p`
 
 Whether to emit a [postcss](https://postcss.org/) config file
@@ -31,13 +35,58 @@ Path to Panda config file
 
 Related: [`config`](/docs/references/config)
 
-#### `--force, -f`
+#### `--cwd`
 
-Whether to overwrite existing files
+Path to current working direcory
 
 #### `--silent`
 
 Whether to suppress all output
+
+#### `--no-gitignore`
+
+Whether to update gitignorew with the output directory
+
+#### `--out-extension`
+
+The extension of the generated js files (default: 'mjs')
+
+Related: [`config.outExtension`](/docs/references/config#outExtension)
+
+#### `--jsx-framework`
+
+The jsx framework to use
+
+Related: [`config.jsxFramework`](/docs/references/config#jsxFramework)
+
+#### `--syntax`
+
+The css syntax preference
+
+Related: [`config.syntax`](/docs/references/config#syntax)
+
+#### `--strict-tokens`
+
+Set strictTokens to true
+
+Related: [`config.strictTokens`](/docs/references/config#strictTokens)
+
+#### `--cpu-prof`
+
+This will generate a `panda-{command}-{timestamp}.cpuprofile` file in
+the current working directory, which can be opened in tools like [Speedscope](https://www.speedscope.app/)
+
+```bash
+pnpm panda --cpu-prof
+```
+
+Related: [Debugging](/docs/guides/debugging)
+
+#### `--logfile`
+
+Outputs logs to a file
+
+Related: [Debugging](/docs/guides/debugging)
 
 ---
 
@@ -59,12 +108,6 @@ Whether to minify the generated CSS
 
 Related: [`config.minify`](/docs/references/config#minify)
 
-#### `--cwd`
-
-The current working directory
-
-Related: [`config.cwd`](/docs/references/config#cwd)
-
 #### `--watch, -w`
 
 Whether to watch for changes in the project
@@ -77,11 +120,17 @@ Whether to poll for file changes
 
 Related: [`config.poll`](/docs/references/config#poll)
 
-#### `--config`
+#### `--config, -c`
 
 The path to the config file
 
 Related: [`config`](/docs/references/config.md)
+
+#### `--cwd`
+
+The current working directory
+
+Related: [`config.cwd`](/docs/references/config#cwd)
 
 #### `--preflight`
 
@@ -89,11 +138,17 @@ Whether to emit the preflight or reset CSS
 
 Related: [`config.preflight`](/docs/references/config#preflight)
 
-#### `--emitTokensOnly`
+#### `--silent`
 
-Whether to only emit the `tokens` directory
+Whether to suppress all output
 
-Related: [`config.emitTokensOnly`](/docs/references/config#emitTokensOnly)
+Related: [`config.logLevel`](/docs/references/config#log-level)
+
+#### `--exclude, -e`
+
+Files to exclude from the extract process
+
+Related: [`config`](/docs/references/config.md)
 
 #### `--clean`
 
@@ -107,6 +162,39 @@ Whether to hash the output classnames
 
 Related: [`config.hash`](/docs/references/config#hash)
 
+#### `--lightningcss`
+
+Use `lightningcss` instead of `postcss` for css optimization.
+
+Related: [`config.lightningcss`](/docs/references/config#lightningcss)
+
+#### `--polyfill`
+
+Polyfill CSS @layers at-rules for older browsers.
+
+Related: [`config.polyfill`](/docs/references/config#polyfill)
+
+#### `--emitTokensOnly`
+
+Whether to only emit the `tokens` directory
+
+Related: [`config.emitTokensOnly`](/docs/references/config#emitTokensOnly)
+
+#### `--cpu-prof`
+
+This will generate a `panda-{command}-{timestamp}.cpuprofile` file in
+the current working directory, which can be opened in tools like [Speedscope](https://www.speedscope.app/)
+
+```bash
+pnpm panda --cpu-prof
+```
+
+Related: [Debugging](/docs/guides/debugging)
+
+#### `--logfile`
+
+Outputs logs to a file
+
 ---
 
 ## `panda codegen`
@@ -115,6 +203,12 @@ Generate new CSS utilities for your project based on the configuration file.
 
 ### Flags
 
+#### `--silent`
+
+Whether to suppress all output
+
+Related: [`config.logLevel`](/docs/references/config#log-level)
+
 #### `--clean`
 
 Whether to clean the output directory before emitting
@@ -127,23 +221,82 @@ Path to Panda config file
 
 Related: [`config`](/docs/references/config.md)
 
-#### `--cwd, -c`
+#### `--watch, -w`
+
+Whether to watch for changes in the project
+
+Related: [`config.watch`](/docs/references/config#watch)
+
+#### `--poll`
+
+Whether to poll for file changes
+
+Related: [`config.poll`](/docs/references/config#poll)
+
+#### `--cwd`
 
 Current working directory
 
 Related: [`config.cwd`](/docs/references/config#cwd)
 
-#### `--silent`
+#### `--cpu-prof`
 
-Whether to suppress all output
+This will generate a `panda-{command}-{timestamp}.cpuprofile` file in
+the current working directory, which can be opened in tools like [Speedscope](https://www.speedscope.app/)
 
-Related: [`config.logLevel`](/docs/references/config#log-level)
+```bash
+pnpm panda --cpu-prof
+```
+
+Related: [Debugging](/docs/guides/debugging)
+
+#### `--logfile`
+
+Outputs logs to a file
+
+Related: [Debugging](/docs/guides/debugging)
 
 ## `panda cssgen`
 
 Generate the CSS from files.
 
+You can use a `glob` to override the `config.include` option like this:
+
+`panda cssgen "src/**/*.css" --outfile dist.css`
+
+or you can use it with a `{type}` argument to generate only a specific type of CSS:
+
+- preflight
+- tokens
+- static
+- global
+- keyframes
+
+> Note that this only works when passing an `--outfile`.
+
+You can use it like this:
+
+```bash
+panda cssgen "static" --outfile dist/static.css
+```
+
 ### Flags
+
+#### `--outfile`
+
+Output file for extracted css, default to './styled-system/styles.css'
+
+#### `--silent`
+
+Whether to suppress all output
+
+Related: [`config.logLevel`](/docs/references/config#log-level)
+
+#### `--minify`
+
+Whether to minify the generated CSS
+
+Related: [`config.minify`](/docs/references/config#minify)
 
 #### `--clean`
 
@@ -157,17 +310,69 @@ Path to Panda config file
 
 Related: [`config`](/docs/references/config.md)
 
-#### `--cwd, -c`
+#### `--watch, -w`
+
+Whether to watch for changes in the project
+
+Related: [`config.watch`](/docs/references/config#watch)
+
+#### `--minimal`
+
+Skip generating CSS for theme tokens, preflight, keyframes, static and global css.
+
+Thich means that the generated CSS will only contain the CSS related to the styles found in the included files.
+
+> Note that you can use a `glob` to override the `config.include` option like this:
+> `panda cssgen "src/**/*.css" --minimal`
+
+This is useful when you want to split your CSS into multiple files, for example if you want to split by pages.
+
+Use it like this:
+
+```bash
+panda cssgen "src/**/pages/*.css" --minimal --outfile dist/pages.css
+```
+
+#### `--poll`
+
+Whether to poll for file changes
+
+Related: [`config.poll`](/docs/references/config#poll)
+
+#### `--cwd`
 
 Current working directory
 
 Related: [`config.cwd`](/docs/references/config#cwd)
 
-#### `--silent`
+#### `--lightningcss`
 
-Whether to suppress all output
+Use `lightningcss` instead of `postcss` for css optimization.
 
-Related: [`config.logLevel`](/docs/references/config#log-level)
+Related: [`config.lightningcss`](/docs/references/config#lightningcss)
+
+#### `--polyfill`
+
+Polyfill CSS @layers at-rules for older browsers.
+
+Related: [`config.polyfill`](/docs/references/config#polyfill)
+
+#### `--cpu-prof`
+
+This will generate a `panda-{command}-{timestamp}.cpuprofile` file in
+the current working directory, which can be opened in tools like [Speedscope](https://www.speedscope.app/)
+
+```bash
+pnpm panda --cpu-prof
+```
+
+Related: [Debugging](/docs/guides/debugging)
+
+#### `--logfile`
+
+Outputs logs to a file
+
+Related: [Debugging](/docs/guides/debugging)
 
 ## `panda studio`
 
@@ -183,9 +388,13 @@ Build
 
 Preview
 
-#### `--outdir`
+#### `--port`
 
-Output directory for static files
+Use custom port
+
+#### `--host`
+
+Expose to custom host
 
 #### `--config, -c`
 
@@ -193,11 +402,15 @@ Path to Panda config file
 
 Related: [`config`](/docs/references/config.md)
 
-#### `--cwd, -c`
+#### `--cwd`
 
 Current working directory
 
 Related: [`config.cwd`](/docs/references/config#cwd)
+
+#### `--outdir`
+
+Output directory for static files
 
 ## `panda analyze`
 
@@ -223,7 +436,7 @@ Path to Panda config file
 
 Related: [`config`](/docs/references/config.md)
 
-#### `--cwd, -c`
+#### `--cwd`
 
 Current working directory
 
@@ -235,6 +448,10 @@ Debug design token extraction & CSS generated from files in glob.
 
 ### Flags
 
+#### `--silent`
+
+Whether to suppress all output
+
 #### `--dry`
 
 Output debug files in stdout without writing to disk
@@ -243,9 +460,9 @@ Output debug files in stdout without writing to disk
 
 Output directory for debug files, defaults to `../styled-system/debug`
 
-#### `--silent`
+#### `--only-config`
 
-Whether to suppress all output
+Should only output the config file, default to 'false'
 
 #### `--config, -c`
 
@@ -253,8 +470,35 @@ Path to Panda config file
 
 Related: [`config`](/docs/references/config.md)
 
-#### `--cwd, -c`
+#### `--cwd`
 
 Current working directory
 
 Related: [`config.cwd`](/docs/references/config#cwd)
+
+## `panda emit-pkg`
+
+Emit package.json with entrypoints, can be used to create a workspace package dedicated to the [`config.outdir`](/docs/references/config#outdir), in combination with [`config.importMap`](/docs/references/config#importMap)
+
+#### `--cpu-prof`
+
+This will generate a `panda-{command}-{timestamp}.cpuprofile` file in
+the current working directory, which can be opened in tools like [Speedscope](https://www.speedscope.app/)
+
+```bash
+pnpm panda --cpu-prof
+
+#### `--logfile`
+
+Outputs logs to a file
+
+### Flags
+
+#### `--silent`
+
+Whether to suppress all output
+
+#### `--outdir`
+
+Output directory
+```

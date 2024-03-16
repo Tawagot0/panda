@@ -1,5 +1,382 @@
 # @pandacss/extractor
 
+## 0.35.0
+
+### Patch Changes
+
+- @pandacss/shared@0.35.0
+
+## 0.34.3
+
+### Patch Changes
+
+- @pandacss/shared@0.34.3
+
+## 0.34.2
+
+### Patch Changes
+
+- 0bf09f2: Allow using namespaced imports
+
+  ```ts
+  import * as p from 'styled-system/patterns'
+  import * as recipes from 'styled-system/recipes'
+  import * as panda from 'styled-system/css'
+
+  // this will now be extracted
+  p.stack({ mt: '40px' })
+
+  recipes.cardStyle({ rounded: true })
+
+  panda.css({ color: 'red' })
+  panda.cva({ base: { color: 'blue' } })
+  panda.sva({ base: { root: { color: 'green' } } })
+  ```
+
+  - @pandacss/shared@0.34.2
+
+## 0.34.1
+
+### Patch Changes
+
+- @pandacss/shared@0.34.1
+
+## 0.34.0
+
+### Patch Changes
+
+- @pandacss/shared@0.34.0
+
+## 0.33.0
+
+### Patch Changes
+
+- @pandacss/shared@0.33.0
+
+## 0.32.1
+
+### Patch Changes
+
+- @pandacss/shared@0.32.1
+
+## 0.32.0
+
+### Patch Changes
+
+- 7e70b6b: Fix issue where `0` values doesn't get extracted when used in a condition
+- Updated dependencies [8cd8c19]
+  - @pandacss/shared@0.32.0
+
+## 0.31.0
+
+### Patch Changes
+
+- Updated dependencies [f0296249]
+  - @pandacss/shared@0.31.0
+
+## 0.30.2
+
+### Patch Changes
+
+- @pandacss/shared@0.30.2
+
+## 0.30.1
+
+### Patch Changes
+
+- @pandacss/shared@0.30.1
+
+## 0.30.0
+
+### Patch Changes
+
+- Updated dependencies [ab32d1d7]
+- Updated dependencies [49c760cd]
+  - @pandacss/shared@0.30.0
+
+## 0.29.1
+
+### Patch Changes
+
+- @pandacss/shared@0.29.1
+
+## 0.29.0
+
+### Patch Changes
+
+- @pandacss/shared@0.29.0
+
+## 0.28.0
+
+## 0.27.3
+
+## 0.27.2
+
+## 0.27.1
+
+## 0.27.0
+
+### Minor Changes
+
+- 84304901: Improve performance, mostly for the CSS generation by removing a lot of `postcss` usage (and plugins).
+
+  ## Public changes:
+
+  - Introduce a new `config.lightningcss` option to use `lightningcss` (currently disabled by default) instead of
+    `postcss`.
+  - Add a new `config.browserslist` option to configure the browserslist used by `lightningcss`.
+  - Add a `--lightningcss` flag to the `panda` and `panda cssgen` command to use `lightningcss` instead of `postcss` for
+    this run.
+
+  ## Internal changes:
+
+  - `markImportant` fn from JS instead of walking through postcss AST nodes
+  - use a fork of `stitches` `stringify` function instead of `postcss-css-in-js` to write the CSS string from a JS
+    object
+  - only compute once `TokenDictionary` properties
+  - refactor `serializeStyle` to use the same code path as the rest of the pipeline with `StyleEncoder` / `StyleDecoder`
+    and rename it to `transformStyles` to better convey what it does
+
+## 0.26.2
+
+## 0.26.1
+
+## 0.26.0
+
+## 0.25.0
+
+## 0.24.2
+
+## 0.24.1
+
+## 0.24.0
+
+## 0.23.0
+
+## 0.22.1
+
+## 0.22.0
+
+## 0.21.0
+
+### Patch Changes
+
+- 1464460f: Fix static extraction issue when using JSX attributes (props) that are other JSX nodes
+
+  While parsing over the AST Nodes, due to an optimization where we skipped retrieving the current JSX element and
+  instead kept track of the latest one, the logic was flawed and did not extract other properties after encountering a
+  JSX attribute that was another JSX node.
+
+  ```tsx
+  const Component = () => {
+    return (
+      <>
+        {/* ❌ this wasn't extracting ml="2" */}
+        <Flex icon={<svg className="icon" />} ml="2" />
+
+        {/* ✅ this was fine */}
+        <Stack ml="4" icon={<div className="icon" />} />
+      </>
+    )
+  }
+  ```
+
+  Now both will be fine again.
+
+## 0.20.1
+
+## 0.20.0
+
+## 0.19.0
+
+## 0.18.3
+
+## 0.18.2
+
+## 0.18.1
+
+## 0.18.0
+
+### Patch Changes
+
+- 336fd0b0: Perf: use raw `if` instead of ts-pattern in the extractor (hot path)
+
+## 0.17.5
+
+## 0.17.4
+
+## 0.17.3
+
+## 0.17.2
+
+## 0.17.1
+
+### Patch Changes
+
+- a76b279e: Extract identifier values coming from an `EnumDeclaration` member
+
+  Example:
+
+  ```ts
+  enum Color {
+    Red = 'red.400',
+    Blue = 'blue.400',
+  }
+
+  const className = css({ color: Color.Red, backgroundColor: Color['Blue'] })
+  ```
+
+## 0.17.0
+
+## 0.16.0
+
+## 0.15.5
+
+## 0.15.4
+
+### Patch Changes
+
+- 3a04a927: Fix static extraction of the
+  [Array Syntax](https://panda-css.com/docs/concepts/responsive-design#the-array-syntax) when used with runtime
+  conditions
+
+  Given a component like this:
+
+  ```ts
+  function App() {
+    return <Box py={[2, verticallyCondensed ? 2 : 3, 4]} />
+  }
+  ```
+
+  the `py` value was incorrectly extracted like this:
+
+  ```ts
+   {
+      "py": {
+          "1": 2,
+      },
+  },
+  {
+      "py": {
+          "1": 3,
+      },
+  },
+  ```
+
+  which would then generate invalid CSS like:
+
+  ```css
+  .paddingBlock\\\\:1_2 {
+    1: 2px;
+  }
+
+  .paddingBlock\\\\:1_3 {
+    1: 3px;
+  }
+  ```
+
+  it's now correctly transformed back to an array:
+
+  ```diff
+  {
+    "py": {
+  -    "1": 2,
+  +   [
+  +       undefined,
+  +       2,
+  +   ]
+    },
+  },
+  {
+    "py": {
+  -    "1": 3,
+  +   [
+  +       undefined,
+  +       3,
+  +   ]
+    },
+  },
+  ```
+
+  which will generate the correct CSS
+
+  ```css
+  @media screen and (min-width: 40em) {
+    .sm\\\\:py_2 {
+      padding-block: var(--spacing-2);
+    }
+
+    .sm\\\\:py_3 {
+      padding-block: var(--spacing-3);
+    }
+  }
+  ```
+
+## 0.15.3
+
+## 0.15.2
+
+## 0.15.1
+
+### Patch Changes
+
+- c40ae1b9: feat(parser): extract {fn}.raw as an identity fn
+
+  so this will now work:
+
+  ```ts
+  import { css } from 'styled-system/css'
+
+  const paragraphSpacingStyle = css.raw({
+    '&:not(:first-child)': { marginBlockEnd: '1em' },
+  })
+
+  export const proseCss = css.raw({
+    maxWidth: '800px',
+    '& p': {
+      '&:not(:first-child)': { marginBlockStart: '1em' },
+    },
+    '& h1': paragraphSpacingStyle,
+    '& h2': paragraphSpacingStyle,
+  })
+  ```
+
+  & use ECMA preset for ts-evaluator: This means that no other globals than those that are defined in the ECMAScript
+  spec such as Math, Promise, Object, etc, are available but it allows for some basic evaluation of expressions like
+  this:
+
+  ```ts
+  import { cva } from '.panda/css'
+
+  const variants = () => {
+    const spacingTokens = Object.entries({
+      s: 'token(spacing.1)',
+      m: 'token(spacing.2)',
+      l: 'token(spacing.3)',
+    })
+
+    const spacingProps = {
+      px: 'paddingX',
+      py: 'paddingY',
+    }
+
+    // Generate variants programmatically
+    return Object.entries(spacingProps)
+      .map(([name, styleProp]) => {
+        const variants = spacingTokens
+          .map(([variant, token]) => ({ [variant]: { [styleProp]: token } }))
+          .reduce((_agg, kv) => ({ ..._agg, ...kv }))
+
+        return { [name]: variants }
+      })
+      .reduce((_agg, kv) => ({ ..._agg, ...kv }))
+  }
+
+  const baseStyle = cva({
+    variants: variants(),
+  })
+  ```
+
 ## 0.15.0
 
 ### Patch Changes

@@ -1,17 +1,19 @@
-import type { Config } from '@pandacss/types'
+import type { Preset } from '@pandacss/types'
 import { breakpoints } from './breakpoints'
+import { containerSizes } from './containers'
 import { keyframes } from './keyframes'
 import { tokens } from './tokens'
 import { textStyles } from './typography'
 
-const defineConfig = <T extends Config>(config: T) => config
+const definePreset = <T extends Preset>(config: T) => config
 
-export const preset = defineConfig({
+export const preset = definePreset({
   theme: {
     keyframes,
     breakpoints,
     tokens,
     textStyles,
+    containerSizes,
   },
 })
 

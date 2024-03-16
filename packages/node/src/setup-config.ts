@@ -1,12 +1,14 @@
-import { messages } from '@pandacss/generator'
+import { findConfig } from '@pandacss/config'
+import { messages } from '@pandacss/core'
 import { logger, quote } from '@pandacss/logger'
+import { PandaError } from '@pandacss/shared'
 import type { Config } from '@pandacss/types'
-import { writeFile } from 'fs-extra'
+import fsExtra from 'fs-extra'
 import { lookItUpSync } from 'look-it-up'
 import { outdent } from 'outdent'
 import { join } from 'path'
 import getPackageManager from 'preferred-pm'
-import { findConfig } from './config'
+import prettier from 'prettier'
 
 type SetupOptions = Partial<Config> & {
   force?: boolean
@@ -15,7 +17,15 @@ type SetupOptions = Partial<Config> & {
 export async function setupConfig(cwd: string, opts: SetupOptions = {}) {
   const { force, outExtension, jsxFramework, syntax } = opts
 
-  const configFile = findConfig()
+  let configFile: string | undefined
+  try {
+    configFile = findConfig({ cwd })
+  } catch (err) {
+    // ignore config not found error
+    if (!(err instanceof PandaError)) {
+      throw err
+    }
+  }
 
   const pmResult = await getPackageManager(cwd)
   const pm = pmResult?.name ?? 'npm'
@@ -54,7 +64,7 @@ export default defineConfig({
 })
     `
 
-    await writeFile(join(cwd, file), content)
+    await fsExtra.writeFile(join(cwd, file), await prettier.format(content, { parser: 'babel' }))
     logger.log(messages.thankYou())
   }
 }
@@ -70,5 +80,5 @@ module.exports = {
 }
   `
 
-  await writeFile(join(cwd, 'postcss.config.cjs'), content)
+  await fsExtra.writeFile(join(cwd, 'postcss.config.cjs'), content)
 }

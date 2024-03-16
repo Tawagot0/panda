@@ -1,4 +1,4 @@
-import type { Context } from '../engines'
+import type { Context } from '@pandacss/core'
 
 export function generatePackageJson(ctx: Context) {
   const {
@@ -30,6 +30,11 @@ export function generatePackageJson(ctx: Context) {
         types: ctx.file.extDts('./recipes/index'),
         require: ctx.file.ext(`./recipes/index`),
         import: ctx.file.ext(`./recipes/index`),
+      },
+      './themes': {
+        types: ctx.file.extDts('./themes/index'),
+        require: ctx.file.ext(`./themes/index`),
+        import: ctx.file.ext(`./themes/index`),
       },
       './tokens': {
         types: ctx.file.extDts('./tokens/index'),

@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'vitest'
 import { mergeConfigs } from '../src/merge-config'
-import type { Config } from '@pandacss/types'
+import { getResolvedConfig } from '../src/get-resolved-config'
+import type { Config, Preset } from '@pandacss/types'
 
 const defineConfig = <T extends Config>(config: T) => config
+const definePreset = <T extends Preset>(preset: T) => preset
 
 describe('mergeConfigs / theme', () => {
   test('should merge configs', () => {
@@ -150,6 +152,247 @@ describe('mergeConfigs / theme', () => {
     `)
   })
 
+  test('config + preset.extend', () => {
+    const userConfig = defineConfig({
+      theme: {
+        tokens: {
+          colors: {
+            pink: { value: 'from-config' },
+          },
+        },
+      },
+    })
+
+    const defaultConfig = defineConfig({
+      theme: {
+        extend: {
+          tokens: {
+            colors: {
+              pink: { value: 'from-preset' },
+            },
+          },
+        },
+      },
+    })
+
+    const result = mergeConfigs([userConfig, defaultConfig])
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "theme": {
+          "tokens": {
+            "colors": {
+              "pink": {
+                "value": "from-preset",
+              },
+            },
+          },
+        },
+      }
+    `)
+  })
+
+  test('config.extend + preset', () => {
+    const userConfig = defineConfig({
+      theme: {
+        extend: {
+          tokens: {
+            colors: {
+              pink: { value: 'from-config' },
+            },
+          },
+        },
+      },
+    })
+
+    const defaultConfig = defineConfig({
+      theme: {
+        tokens: {
+          colors: {
+            pink: { value: 'from-preset' },
+          },
+        },
+      },
+    })
+
+    const result = mergeConfigs([userConfig, defaultConfig])
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "theme": {
+          "tokens": {
+            "colors": {
+              "pink": {
+                "value": "from-config",
+              },
+            },
+          },
+        },
+      }
+    `)
+  })
+
+  test('should getResolvedConfig, merge and override', async () => {
+    const defaultConfig = defineConfig({
+      presets: [
+        {
+          theme: {
+            tokens: {
+              colors: {
+                'nested-1': { value: 'nested-1' },
+              },
+            },
+            extend: {
+              tokens: {
+                colors: {
+                  'nested-X': { value: 'nested-A' },
+                },
+              },
+            },
+          },
+        },
+        {
+          theme: {
+            tokens: {
+              colors: {
+                'nested-2': { value: 'nested-2' },
+              },
+            },
+            extend: {
+              tokens: {
+                colors: {
+                  'nested-X': { value: 'nested-B' },
+                },
+              },
+            },
+          },
+        },
+      ],
+      theme: {
+        tokens: {
+          colors: {
+            'default-main': { value: 'override' },
+          },
+        },
+        extend: {
+          tokens: {
+            colors: {
+              orange: { value: 'orange-never-overriden' },
+              gray: { value: 'from-default-config' },
+            },
+          },
+        },
+      },
+    })
+
+    const userConfig = defineConfig({
+      presets: [
+        {
+          theme: {
+            tokens: {
+              colors: {
+                'nested-3': { value: 'nested-3' },
+              },
+            },
+            extend: {
+              tokens: {
+                colors: {
+                  'nested-X': { value: 'nested-C' },
+                },
+              },
+            },
+          },
+        },
+        {
+          theme: {
+            tokens: {
+              colors: {
+                'nested-4': { value: 'nested-4' },
+              },
+            },
+            extend: {
+              tokens: {
+                colors: {
+                  'nested-X': { value: 'nested-D' },
+                },
+              },
+            },
+          },
+        },
+      ],
+      theme: {
+        tokens: {
+          colors: {
+            pink: { value: 'pink' },
+            'nested-5': { value: 'nested-5' },
+            'nested-X': { value: 'nested-E' },
+          },
+        },
+        extend: {
+          tokens: {
+            colors: {
+              blue: { value: 'blue' },
+              gray: { value: 'final-gray' },
+              'nested-X': { value: 'nested-F' },
+            },
+          },
+        },
+      },
+    })
+
+    const result = await getResolvedConfig(
+      {
+        presets: [defaultConfig, userConfig],
+        theme: {
+          tokens: {
+            colors: {
+              danger: { value: 'final-color' },
+            },
+          },
+          extend: {
+            tokens: {
+              colors: {
+                blue: { value: 'final-blue' },
+                final: { value: 'final' },
+                'nested-X': { value: 'final-nested' },
+              },
+            },
+          },
+        },
+      },
+      '',
+    )
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "theme": {
+          "tokens": {
+            "colors": {
+              "blue": {
+                "value": "final-blue",
+              },
+              "danger": {
+                "value": "final-color",
+              },
+              "final": {
+                "value": "final",
+              },
+              "gray": {
+                "value": "final-gray",
+              },
+              "nested-X": {
+                "value": "final-nested",
+              },
+              "orange": {
+                "value": "orange-never-overriden",
+              },
+            },
+          },
+        },
+      }
+    `)
+  })
+
   test('non-existing keys', () => {
     const userConfig = defineConfig({
       theme: {
@@ -187,6 +430,183 @@ describe('mergeConfigs / theme', () => {
             "fonts": {
               "sans": {
                 "value": "Lato, sans-serif",
+              },
+            },
+          },
+        },
+      }
+    `)
+  })
+
+  test('flat and nested object on same key', () => {
+    const preset = definePreset({
+      theme: {
+        extend: {
+          tokens: {
+            colors: {
+              black: { value: 'black' },
+            },
+          },
+        },
+      },
+    })
+
+    const userConfig = defineConfig({
+      theme: {
+        tokens: {
+          colors: {
+            black: {
+              0: { value: 'black' },
+              10: { value: 'black/10' },
+              20: { value: 'black/20' },
+              30: { value: 'black/30' },
+            },
+          },
+        },
+      },
+    })
+
+    const result = mergeConfigs([userConfig, preset])
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "theme": {
+          "tokens": {
+            "colors": {
+              "black": {
+                "0": {
+                  "value": "black",
+                },
+                "10": {
+                  "value": "black/10",
+                },
+                "20": {
+                  "value": "black/20",
+                },
+                "30": {
+                  "value": "black/30",
+                },
+                "DEFAULT": {
+                  "value": "black",
+                },
+              },
+            },
+          },
+        },
+      }
+    `)
+
+    // opposite order
+    expect(mergeConfigs([preset, userConfig])).toMatchInlineSnapshot(`
+      {
+        "theme": {
+          "tokens": {
+            "colors": {
+              "black": {
+                "0": {
+                  "value": "black",
+                },
+                "10": {
+                  "value": "black/10",
+                },
+                "20": {
+                  "value": "black/20",
+                },
+                "30": {
+                  "value": "black/30",
+                },
+                "DEFAULT": {
+                  "value": "black",
+                },
+              },
+            },
+          },
+        },
+      }
+    `)
+  })
+
+  test('flat and nested object with existing DEFAULT', () => {
+    const preset = definePreset({
+      theme: {
+        extend: {
+          tokens: {
+            colors: {
+              black: { value: 'black' },
+            },
+          },
+        },
+      },
+    })
+
+    const userConfig = defineConfig({
+      theme: {
+        tokens: {
+          colors: {
+            black: {
+              DEFAULT: { value: 'white' },
+              0: { value: 'black' },
+              10: { value: 'black/10' },
+              20: { value: 'black/20' },
+              30: { value: 'black/30' },
+            },
+          },
+        },
+      },
+    })
+
+    const result = mergeConfigs([userConfig, preset])
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "theme": {
+          "tokens": {
+            "colors": {
+              "black": {
+                "0": {
+                  "value": "black",
+                },
+                "10": {
+                  "value": "black/10",
+                },
+                "20": {
+                  "value": "black/20",
+                },
+                "30": {
+                  "value": "black/30",
+                },
+                "DEFAULT": {
+                  "value": "white",
+                },
+              },
+            },
+          },
+        },
+      }
+    `)
+
+    // opposite order
+    expect(mergeConfigs([preset, userConfig])).toMatchInlineSnapshot(`
+      {
+        "theme": {
+          "tokens": {
+            "colors": {
+              "black": {
+                "0": {
+                  "value": "black",
+                },
+                "10": {
+                  "value": "black/10",
+                },
+                "20": {
+                  "value": "black/20",
+                },
+                "30": {
+                  "value": "black/30",
+                },
+                "DEFAULT": {
+                  "value": "white",
+                },
               },
             },
           },
@@ -286,7 +706,7 @@ describe('mergeConfigs / recipes', () => {
 
     const result = mergeConfigs([userConfig, defaultConfig])
 
-    expect(result.theme.recipes).toMatchInlineSnapshot(`
+    expect(result.theme?.recipes).toMatchInlineSnapshot(`
       {
         "button": {
           "className": "button",
@@ -311,6 +731,57 @@ describe('mergeConfigs / recipes', () => {
               },
             },
           },
+        },
+      }
+    `)
+  })
+})
+
+describe('mergeConfigs / staticCss', () => {
+  test('should merge utilities', () => {
+    const userConfig = defineConfig({
+      staticCss: {
+        extend: {
+          recipes: {
+            button: ['*'],
+            badge: [{ variants: ['*'] }],
+          },
+        },
+      },
+    })
+
+    const defaultConfig = defineConfig({
+      staticCss: {
+        recipes: {
+          badge: [{ size: ['sm'] }],
+          card: ['*'],
+        },
+      },
+    })
+
+    const result = mergeConfigs([userConfig, defaultConfig])
+
+    expect(result.staticCss).toMatchInlineSnapshot(`
+      {
+        "recipes": {
+          "badge": [
+            {
+              "size": [
+                "sm",
+              ],
+            },
+            {
+              "variants": [
+                "*",
+              ],
+            },
+          ],
+          "button": [
+            "*",
+          ],
+          "card": [
+            "*",
+          ],
         },
       }
     `)

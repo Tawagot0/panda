@@ -1,58 +1,76 @@
 import { logger } from '@pandacss/logger'
-import type { Config } from '@pandacss/types'
-import { match } from 'ts-pattern'
-import type { PandaContext } from './create-context'
-import { bundleChunks, emitAndExtract, writeFileChunk } from './extract'
-import { loadContext } from './load-context'
+import type { ArtifactId, Config } from '@pandacss/types'
+import { codegen } from './codegen'
+import { loadConfigAndCreateContext } from './config'
+import { PandaContext } from './create-context'
 
-async function build(ctx: PandaContext) {
-  const { msg } = await emitAndExtract(ctx)
-  logger.info('css:emit', msg)
+async function build(ctx: PandaContext, artifactIds?: ArtifactId[]) {
+  await codegen(ctx, artifactIds)
+
+  if (ctx.config.emitTokensOnly) {
+    return logger.info('css:emit', 'Successfully rebuilt the css variables and js function to query your tokens ✨')
+  }
+
+  const done = logger.time.info('')
+
+  const sheet = ctx.createSheet()
+  ctx.appendLayerParams(sheet)
+  ctx.appendBaselineCss(sheet)
+  const parsed = ctx.parseFiles()
+  ctx.appendParserCss(sheet)
+
+  await ctx.writeCss(sheet)
+  done(ctx.messages.buildComplete(parsed.files.length))
 }
 
 export async function generate(config: Config, configPath?: string) {
-  const [ctxRef, loadCtx] = await loadContext(config, configPath)
-
-  const ctx = ctxRef.current
+  let ctx = await loadConfigAndCreateContext({ config, configPath })
   await build(ctx)
 
-  const {
-    runtime: { fs, path },
-    dependencies,
-    config: { cwd },
-  } = ctx
+  const { cwd, watch, poll } = ctx.config
 
-  if (ctx.config.watch) {
-    const configWatcher = fs.watch({ include: dependencies })
-    configWatcher.on('change', async () => {
-      logger.info('config:change', 'Config changed, restarting...')
-      await loadCtx()
-      await ctxRef.current.hooks.callHook('config:change', ctxRef.current.config)
-      return build(ctxRef.current)
+  if (watch) {
+    //
+    ctx.watchConfig(
+      async () => {
+        const affecteds = await ctx.diff.reloadConfigAndRefreshContext((conf) => {
+          ctx = new PandaContext(conf)
+        })
+
+        logger.info('ctx:updated', 'config rebuilt ✅')
+        await ctx.hooks['config:change']?.({ config: ctx.config, changes: affecteds })
+        return build(ctx, Array.from(affecteds.artifacts))
+      },
+      { cwd, poll },
+    )
+
+    const bundleStyles = async (ctx: PandaContext, changedFilePath: string) => {
+      const outfile = ctx.runtime.path.join(...ctx.paths.root, 'styles.css')
+      const parserResult = ctx.project.parseSourceFile(changedFilePath)
+
+      if (parserResult) {
+        const done = logger.time.info(ctx.messages.buildComplete(1))
+        const sheet = ctx.createSheet()
+        ctx.appendLayerParams(sheet)
+        ctx.appendBaselineCss(sheet)
+        ctx.appendParserCss(sheet)
+        const css = ctx.getCss(sheet)
+        await ctx.runtime.fs.writeFile(outfile, css)
+        done()
+      }
+    }
+
+    ctx.watchFiles(async (event, file) => {
+      const filePath = ctx.runtime.path.abs(cwd, file)
+      if (event === 'unlink') {
+        ctx.project.removeSourceFile(filePath)
+      } else if (event === 'change') {
+        ctx.project.reloadSourceFile(file)
+        await bundleStyles(ctx, filePath)
+      } else if (event === 'add') {
+        ctx.project.createSourceFile(file)
+        await bundleStyles(ctx, filePath)
+      }
     })
-
-    const contentWatcher = fs.watch(ctx.config)
-    contentWatcher.on('all', async (event, file) => {
-      logger.info(`file:${event}`, file)
-      match(event)
-        .with('unlink', () => {
-          ctx.project.removeSourceFile(path.abs(cwd, file))
-          ctx.chunks.rm(file)
-        })
-        .with('change', async () => {
-          ctx.project.reloadSourceFile(file)
-          await writeFileChunk(ctxRef.current, file)
-          return bundleChunks(ctxRef.current)
-        })
-        .with('add', async () => {
-          ctx.project.createSourceFile(file)
-          return bundleChunks(ctxRef.current)
-        })
-        .otherwise(() => {
-          // noop
-        })
-    })
-
-    logger.info('ctx:watch', ctx.messages.watch())
   }
 }

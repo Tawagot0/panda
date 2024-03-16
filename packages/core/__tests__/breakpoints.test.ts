@@ -1,7 +1,15 @@
-import { breakpoints } from '@pandacss/fixture'
+import { fixturePreset } from '@pandacss/fixture'
 import postcss from 'postcss'
 import { describe, expect, test } from 'vitest'
 import { Breakpoints } from '../src/breakpoints'
+
+const breakpoints = fixturePreset.theme.breakpoints!
+const parse = (value: string) => {
+  const root = postcss.parse(value)
+  const bp = new Breakpoints(breakpoints)
+  bp.expandScreenAtRule(root)
+  return root.toString()
+}
 
 describe('Breakpoints', () => {
   test('should resolve breakpoints', () => {
@@ -11,32 +19,32 @@ describe('Breakpoints', () => {
         [
           "sm",
           {
-            "max": "47.996875em",
-            "min": "40em",
+            "max": "47.9975rem",
+            "min": "40rem",
             "name": "sm",
           },
         ],
         [
           "md",
           {
-            "max": "63.996875em",
-            "min": "48em",
+            "max": "63.9975rem",
+            "min": "48rem",
             "name": "md",
           },
         ],
         [
           "lg",
           {
-            "max": "79.996875em",
-            "min": "64em",
+            "max": "79.9975rem",
+            "min": "64rem",
             "name": "lg",
           },
         ],
         [
           "xl",
           {
-            "max": "95.996875em",
-            "min": "80em",
+            "max": "95.9975rem",
+            "min": "80rem",
             "name": "xl",
           },
         ],
@@ -44,7 +52,7 @@ describe('Breakpoints', () => {
           "2xl",
           {
             "max": undefined,
-            "min": "96em",
+            "min": "96rem",
             "name": "2xl",
           },
         ],
@@ -55,27 +63,27 @@ describe('Breakpoints', () => {
       {
         "2xl": {
           "max": undefined,
-          "min": "96em",
+          "min": "96rem",
           "name": "2xl",
         },
         "lg": {
-          "max": "79.996875em",
-          "min": "64em",
+          "max": "79.9975rem",
+          "min": "64rem",
           "name": "lg",
         },
         "md": {
-          "max": "63.996875em",
-          "min": "48em",
+          "max": "63.9975rem",
+          "min": "48rem",
           "name": "md",
         },
         "sm": {
-          "max": "47.996875em",
-          "min": "40em",
+          "max": "47.9975rem",
+          "min": "40rem",
           "name": "sm",
         },
         "xl": {
-          "max": "95.996875em",
-          "min": "80em",
+          "max": "95.9975rem",
+          "min": "80rem",
           "name": "xl",
         },
       }
@@ -83,37 +91,37 @@ describe('Breakpoints', () => {
 
     expect(bp.ranges).toMatchInlineSnapshot(`
       {
-        "2xl": "screen and (min-width: 96em)",
-        "2xlDown": "screen and (max-width: 96em)",
-        "2xlOnly": "screen and (min-width: 96em)",
-        "lg": "screen and (min-width: 64em)",
-        "lgDown": "screen and (max-width: 64em)",
-        "lgOnly": "screen and (min-width: 64em) and (max-width: 79.996875em)",
-        "lgTo2xl": "screen and (min-width: 64em) and (max-width: 95.996875em)",
-        "lgToXl": "screen and (min-width: 64em) and (max-width: 79.996875em)",
-        "md": "screen and (min-width: 48em)",
-        "mdDown": "screen and (max-width: 48em)",
-        "mdOnly": "screen and (min-width: 48em) and (max-width: 63.996875em)",
-        "mdTo2xl": "screen and (min-width: 48em) and (max-width: 95.996875em)",
-        "mdToLg": "screen and (min-width: 48em) and (max-width: 63.996875em)",
-        "mdToXl": "screen and (min-width: 48em) and (max-width: 79.996875em)",
-        "sm": "screen and (min-width: 40em)",
-        "smDown": "screen and (max-width: 40em)",
-        "smOnly": "screen and (min-width: 40em) and (max-width: 47.996875em)",
-        "smTo2xl": "screen and (min-width: 40em) and (max-width: 95.996875em)",
-        "smToLg": "screen and (min-width: 40em) and (max-width: 63.996875em)",
-        "smToMd": "screen and (min-width: 40em) and (max-width: 47.996875em)",
-        "smToXl": "screen and (min-width: 40em) and (max-width: 79.996875em)",
-        "xl": "screen and (min-width: 80em)",
-        "xlDown": "screen and (max-width: 80em)",
-        "xlOnly": "screen and (min-width: 80em) and (max-width: 95.996875em)",
-        "xlTo2xl": "screen and (min-width: 80em) and (max-width: 95.996875em)",
+        "2xl": "screen and (min-width: 96rem)",
+        "2xlDown": "screen and (max-width: 95.9975rem)",
+        "2xlOnly": "screen and (min-width: 96rem)",
+        "lg": "screen and (min-width: 64rem)",
+        "lgDown": "screen and (max-width: 63.9975rem)",
+        "lgOnly": "screen and (min-width: 64rem) and (max-width: 79.9975rem)",
+        "lgTo2xl": "screen and (min-width: 64rem) and (max-width: 95.9975rem)",
+        "lgToXl": "screen and (min-width: 64rem) and (max-width: 79.9975rem)",
+        "md": "screen and (min-width: 48rem)",
+        "mdDown": "screen and (max-width: 47.9975rem)",
+        "mdOnly": "screen and (min-width: 48rem) and (max-width: 63.9975rem)",
+        "mdTo2xl": "screen and (min-width: 48rem) and (max-width: 95.9975rem)",
+        "mdToLg": "screen and (min-width: 48rem) and (max-width: 63.9975rem)",
+        "mdToXl": "screen and (min-width: 48rem) and (max-width: 79.9975rem)",
+        "sm": "screen and (min-width: 40rem)",
+        "smDown": "screen and (max-width: 39.9975rem)",
+        "smOnly": "screen and (min-width: 40rem) and (max-width: 47.9975rem)",
+        "smTo2xl": "screen and (min-width: 40rem) and (max-width: 95.9975rem)",
+        "smToLg": "screen and (min-width: 40rem) and (max-width: 63.9975rem)",
+        "smToMd": "screen and (min-width: 40rem) and (max-width: 47.9975rem)",
+        "smToXl": "screen and (min-width: 40rem) and (max-width: 79.9975rem)",
+        "xl": "screen and (min-width: 80rem)",
+        "xlDown": "screen and (max-width: 79.9975rem)",
+        "xlOnly": "screen and (min-width: 80rem) and (max-width: 95.9975rem)",
+        "xlTo2xl": "screen and (min-width: 80rem) and (max-width: 95.9975rem)",
       }
     `)
   })
 
   test('should expand screen', () => {
-    const root = postcss.parse(`
+    const css = parse(`
     @breakpoint md{
         .foo{
             color: red;
@@ -121,12 +129,29 @@ describe('Breakpoints', () => {
     }
     `)
 
-    const bp = new Breakpoints(breakpoints)
-    bp.expandScreenAtRule(root)
-
-    expect(root.toString()).toMatchInlineSnapshot(`
+    expect(css).toMatchInlineSnapshot(`
       "
-          @media screen and (min-width: 48em){
+          @media screen and (min-width: 48rem){
+              .foo{
+                  color: red;
+              }
+          }
+          "
+    `)
+  })
+
+  test('breakpoint down', () => {
+    const css = parse(`
+    @breakpoint mdDown{
+        .foo{
+            color: red;
+        }
+    }
+    `)
+
+    expect(css).toMatchInlineSnapshot(`
+      "
+          @media screen and (max-width: 47.9975rem){
               .foo{
                   color: red;
               }

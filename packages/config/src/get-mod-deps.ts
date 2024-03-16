@@ -31,7 +31,7 @@ function resolveWithExtension(file: string, extensions: string[]) {
   return null
 }
 
-export type GetDepsOptions = {
+export interface GetDepsOptions {
   filename: string
   ext: string
   cwd: string
@@ -97,7 +97,7 @@ function getDeps(opts: GetDepsOptions, fromAlias?: string) {
       // this is for internal monorepo packages that don't have a `dist`
       // and instead use a package.json `main` field that points to a src/xxx.ts file
       const found = ts.resolveModuleName(mod, absoluteFile, compilerOptions, ts.sys).resolvedModule
-      if (found && found.extension === '.ts') {
+      if (found && found.extension.endsWith('ts')) {
         getDeps(Object.assign({}, nextOpts, { filename: found.resolvedFileName }))
         return
       }

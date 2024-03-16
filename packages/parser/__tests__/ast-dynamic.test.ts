@@ -4,7 +4,7 @@ import { recipeParser } from './fixture'
 describe('[dynamic] ast parser', () => {
   test('should parse', () => {
     const code = `
-        import { textStyle, layerStyle } from ".panda/recipes"
+        import { textStyle, layerStyle } from "styled-system/recipes"
 
         textStyle({
             variant: "h1"
@@ -102,32 +102,6 @@ describe('[dynamic] ast parser', () => {
               {},
             ],
             "name": "textStyle",
-            "type": "recipe",
-          },
-        },
-        "layerStyle" => Set {
-          {
-            "box": {
-              "column": 9,
-              "line": 8,
-              "node": "CallExpression",
-              "type": "map",
-              "value": Map {
-                "variant" => {
-                  "column": 21,
-                  "line": 9,
-                  "node": "StringLiteral",
-                  "type": "literal",
-                  "value": "raised",
-                },
-              },
-            },
-            "data": [
-              {
-                "variant": "raised",
-              },
-            ],
-            "name": "layerStyle",
             "type": "recipe",
           },
         },

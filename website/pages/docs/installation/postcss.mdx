@@ -12,7 +12,7 @@ Installing Panda as a PostCSS plugin is the recommended way to integrate it with
 
 Install panda and create your `panda.config.ts` file.
 
-<Tabs items={['pnpm', 'npm', 'yarn']}>
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
   <Tab>
     ```bash
     pnpm install -D @pandacss/dev postcss
@@ -31,6 +31,12 @@ Install panda and create your `panda.config.ts` file.
     yarn panda init -p
     ```
   </Tab>
+  <Tab>
+    ```bash
+    bun add -D @pandacss/dev postcss
+    bun panda init -p
+    ```
+  </Tab>
 </Tabs>
 
 ### Add Panda to your PostCSS config
@@ -47,7 +53,7 @@ module.exports = {
 
 ### Configure the content
 
-Add your panda config to your `panda.config.js` file, or wherver panda is configured in your project.
+Add your panda config to your `panda.config.js` file, or wherever panda is configured in your project.
 
 ```js {5}
 import { defineConfig } from '@pandacss/dev'
@@ -72,7 +78,7 @@ export default defineConfig({
   }
   ```
 
-  The `prepare` script that will run codegen after dependency installation. Read more about [codegen](/docs/references/cli#panda-codegen) in the CLI section.
+  The `prepare` script will run codegen after dependency installation. Read more about [codegen](/docs/references/cli#panda-codegen) in the CLI section.
 
   > This step ensures that the panda output directory is regenerated after each dependency installation. So you can add the output directory to your `.gitignore` file and not worry about it.
 

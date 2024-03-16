@@ -11,6 +11,7 @@ Panda provides the following utilities or style properties for styling backgroun
 
 ```jsx
 <div className={css({ bg: 'red.200' })} />
+<div className={css({ bg: 'blue.200/30' })} /> // with alpha
 ```
 
 | Prop                         | CSS Property       | Token Category |
@@ -36,6 +37,7 @@ Properties to create a background gradient based on color stops.
 | Prop           | CSS Property       | Token Category |
 | -------------- | ------------------ | -------------- |
 | `bgGradient`   | `background-image` | `gradients`    |
+| `textGradient` | `background-image` | `gradients`    |
 | `gradientFrom` | `--gradient-from`  | `colors`       |
 | `gradientTo`   | `--gradient-to`    | `colors`       |
 | `gradientVia`  | `--gradient-via`   | `colors`       |
@@ -56,9 +58,12 @@ Properties for controlling the src and position of a background image.
 | Prop                                   | CSS Property        | Token Category |
 | -------------------------------------- | ------------------- | -------------- |
 | `bgPosition`, `backgroundPosition`     | `background-image`  | none           |
-| `bgSize`, `backgroundSize`             | `background-size`   | none           |
+| `bgPositionX`, `backgroundPositionX`   | `background-image`  | none           |
+| `bgPositionY`, `backgroundPositionY`   | `background-image`  | none           |
 | `bgAttachment` ,`backgroundAttachment` | `background-size`   | none           |
-| `bgOrigin`, `backgroundOrigin`         | `background-size`   | none           |
 | `bgClip`, `backgroundClip`             | `background-size`   | none           |
+| `bgOrigin`, `backgroundOrigin`         | `background-size`   | none           |
 | `bgImage`, `backgroundImage`           | `background-size`   | assets         |
 | `bgRepeat`, `backgroundRepeat`         | `background-repeat` | none           |
+| `bgBlendMode`, `backgroundBlendMode`   | `background-size`   | none           |
+| `bgSize`, `backgroundSize`             | `background-size`   | none           |

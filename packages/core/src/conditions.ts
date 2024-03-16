@@ -1,36 +1,97 @@
 import { logger } from '@pandacss/logger'
-import { isBaseCondition, withoutSpace } from '@pandacss/shared'
-import type { ConditionType, Dict, RawCondition } from '@pandacss/types'
+import { capitalize, isBaseCondition, isObject, toRem, withoutSpace } from '@pandacss/shared'
+import type {
+  ConditionDetails,
+  ConditionQuery,
+  ConditionType,
+  Conditions as ConditionsConfig,
+  ThemeVariant,
+  ThemeVariantsMap,
+} from '@pandacss/types'
 import { Breakpoints } from './breakpoints'
-import { ConditionalRule } from './conditional-rule'
 import { parseCondition } from './parse-condition'
+import { compareAtRuleOrMixed } from './sort-style-rules'
 
-const order: ConditionType[] = ['self-nesting', 'combinator-nesting', 'parent-nesting', 'at-rule']
+const order: ConditionType[] = ['at-rule', 'self-nesting', 'combinator-nesting', 'parent-nesting']
 
-type Options = {
-  conditions?: Dict<string>
+interface Options {
+  conditions?: ConditionsConfig
   breakpoints?: Record<string, string>
+  containerNames?: string[]
+  containerSizes?: Record<string, string>
+  themes?: ThemeVariantsMap
 }
 
 const underscoreRegex = /^_/
 const selectorRegex = /&|@/
 
 export class Conditions {
-  values: Record<string, RawCondition>
+  values: Record<string, ConditionDetails>
 
   breakpoints: Breakpoints
 
   constructor(private options: Options) {
-    const { breakpoints: breakpointValues = {}, conditions = {} } = this.options
+    const { breakpoints: breakpointValues = {}, conditions = {} } = options
+
     const breakpoints = new Breakpoints(breakpointValues)
     this.breakpoints = breakpoints
 
     const entries = Object.entries(conditions).map(([key, value]) => [`_${key}`, parseCondition(value)])
 
+    const containers = this.setupContainers()
+    const themes = this.setupThemes()
+
     this.values = {
       ...Object.fromEntries(entries),
       ...breakpoints.conditions,
+      ...containers,
+      ...themes,
     }
+  }
+
+  private setupContainers = () => {
+    const { containerNames = [], containerSizes = {} } = this.options
+
+    const containers: Record<string, ConditionDetails> = {}
+    containerNames.unshift('') // add empty container name for @/sm, @/md, etc.
+
+    containerNames.forEach((name) => {
+      Object.entries(containerSizes).forEach(([size, value]) => {
+        const _value = toRem(value) ?? value
+        containers[`@${name}/${size}`] = {
+          type: 'at-rule',
+          name: 'container',
+          value: _value,
+          raw: `@container ${name} (min-width: ${_value})`,
+          params: `${name} ${value}`,
+        }
+      })
+    })
+
+    return containers
+  }
+
+  private setupThemes = () => {
+    const { themes = {} } = this.options
+
+    const themeVariants: Record<string, ConditionDetails> = {}
+    Object.entries(themes).forEach(([theme, themeVariant]) => {
+      const condName = this.getThemeName(theme)
+      const cond = parseCondition('& ' + this.getThemeSelector(theme, themeVariant))
+      if (!cond) return
+
+      themeVariants[condName] = cond
+    })
+
+    return themeVariants
+  }
+
+  getThemeSelector = (name: string, themeVariant: ThemeVariant) => {
+    return `[data-panda-${themeVariant.attribute || 'theme'}=${name}]`
+  }
+
+  getThemeName = (theme: string) => {
+    return '_theme' + capitalize(theme)
   }
 
   finalize = (paths: string[]) => {
@@ -48,14 +109,16 @@ export class Conditions {
   }
 
   shift = (paths: string[]) => {
-    return paths.slice().sort((a, b) => {
-      const aIsCondition = this.isCondition(a)
-      const bIsCondition = this.isCondition(b)
-      if (aIsCondition && !bIsCondition) return 1
-      if (!aIsCondition && bIsCondition) return -1
-      if (!aIsCondition && !bIsCondition) return -1
-      return 0
-    })
+    return paths
+      .map((path) => path.trim())
+      .sort((a, b) => {
+        const aIsCondition = this.isCondition(a)
+        const bIsCondition = this.isCondition(b)
+        if (aIsCondition && !bIsCondition) return 1
+        if (!aIsCondition && bIsCondition) return -1
+        if (!aIsCondition && !bIsCondition) return -1
+        return 0
+      })
   }
 
   segment = (paths: string[]): { condition: string[]; selector: string[] } => {
@@ -85,33 +148,55 @@ export class Conditions {
     return Object.keys(this.values).length === 0
   }
 
-  get = (key: string) => {
-    const result = this.values[key]
-    return result?.rawValue ?? result?.value
+  get = (key: string): undefined | string | string[] => {
+    const details = this.values[key]
+    return details?.raw
   }
 
-  getRaw = (condition: string): RawCondition | undefined => {
+  getRaw = (condNameOrQuery: ConditionQuery): ConditionDetails | undefined => {
+    if (typeof condNameOrQuery === 'string' && this.values[condNameOrQuery]) return this.values[condNameOrQuery]
+
     try {
-      return this.values[condition] ?? parseCondition(condition)
+      return parseCondition(condNameOrQuery)
     } catch (error) {
       logger.error('core:condition', error)
     }
   }
 
-  sort = (conditions: string[]): RawCondition[] => {
-    const rawConditions = conditions.map(this.getRaw).filter(Boolean) as RawCondition[]
+  sort = (conditions: string[]): ConditionDetails[] => {
+    const rawConditions = conditions.map(this.getRaw).filter(Boolean) as ConditionDetails[]
     return rawConditions.sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type))
   }
 
-  normalize = (condition: string | RawCondition): RawCondition | undefined => {
-    return typeof condition === 'string' ? this.getRaw(condition) : condition
+  normalize = (condition: ConditionQuery | ConditionDetails): ConditionDetails | undefined => {
+    return isObject(condition) ? (condition as ConditionDetails) : this.getRaw(condition)
   }
 
   keys = () => {
     return Object.keys(this.values)
   }
 
-  rule = () => {
-    return new ConditionalRule(this)
+  saveOne = (key: string, value: string) => {
+    const parsed = parseCondition(value)
+    if (!parsed) return
+
+    this.values[`_${key}`] = parsed
+  }
+
+  remove(key: string) {
+    delete this.values[`_${key}`]
+  }
+
+  getSortedKeys = () => {
+    return Object.keys(this.values).sort((a, b) => {
+      const aCondition = this.values[a]
+      const bCondition = this.values[b]
+
+      const score = compareAtRuleOrMixed(
+        { entry: {} as any, conditions: [aCondition] },
+        { entry: {} as any, conditions: [bCondition] },
+      )
+      return score
+    })
   }
 }

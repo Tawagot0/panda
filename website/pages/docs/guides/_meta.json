@@ -1,8 +1,9 @@
 {
+  "minimal-setup": "Minimal Setup",
   "component-library": "Component Library",
   "multiple-themes": "Multiple Themes",
   "fonts": "Custom Fonts",
   "dynamic-styling": "Dynamic Styles",
   "static": "Static Generator",
-  "virtual-color": "Virtual Color"
+  "debugging": "Debugging"
 }

@@ -1,31 +1,51 @@
-import { Builder } from '@pandacss/node'
-import type { PluginCreator } from 'postcss'
+import { Builder, setLogStream } from '@pandacss/node'
 import { createRequire } from 'module'
+import path from 'path'
+import type { PluginCreator } from 'postcss'
 
-const require = createRequire(import.meta.url)
+const customRequire = createRequire(__dirname)
 
 const PLUGIN_NAME = 'pandacss'
 
+export interface PluginOptions {
+  configPath?: string
+  cwd?: string
+  logfile?: string
+  allow?: RegExp[]
+}
+
 const interopDefault = (obj: any) => (obj && obj.__esModule ? obj.default : obj)
 
-export const loadConfig = () => interopDefault(require('@pandacss/postcss'))
+export const loadConfig = () => interopDefault(customRequire('@pandacss/postcss'))
 
-export const pandacss: PluginCreator<{ configPath?: string; cwd?: string }> = (options = {}) => {
-  const { configPath, cwd } = options
-  const builder = new Builder()
+let stream: ReturnType<typeof setLogStream> | undefined
+
+const builder = new Builder()
+
+export const pandacss: PluginCreator<PluginOptions> = (options = {}) => {
+  const { configPath, cwd, logfile, allow } = options
+
+  if (!stream && logfile) {
+    stream = setLogStream({ cwd, logfile })
+  }
 
   return {
     postcssPlugin: PLUGIN_NAME,
     plugins: [
       async function (root, result) {
+        const fileName = result.opts.from
+
+        const skip = shouldSkip(fileName, allow)
+        if (skip) return
+
         await builder.setup({ configPath, cwd })
 
         // ignore non-panda css file
-        if (!builder.isValidRoot(root)) {
-          return
-        }
+        if (!builder.isValidRoot(root)) return
 
-        await builder.extract()
+        await builder.emit()
+
+        builder.extract()
 
         builder.registerDependency((dep) => {
           result.messages.push({
@@ -50,3 +70,17 @@ export const pandacss: PluginCreator<{ configPath?: string; cwd?: string }> = (o
 pandacss.postcss = true
 
 export default pandacss
+
+const nodeModulesRegex = /node_modules/
+
+function isValidCss(file: string) {
+  const [filePath] = file.split('?')
+  return path.extname(filePath) === '.css'
+}
+
+const shouldSkip = (fileName: string | undefined, allow: PluginOptions['allow']) => {
+  if (!fileName) return true
+  if (!isValidCss(fileName)) return true
+  if (allow?.some((p) => p.test(fileName))) return false
+  return nodeModulesRegex.test(fileName)
+}

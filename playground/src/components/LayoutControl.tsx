@@ -1,24 +1,28 @@
+import { BreakpointControl } from '@/src/components/Preview/BreakpointControl'
 import { HorizontalSplit, PreviewLayout, ResponsiveLayout, VerticalSplit } from '@/src/components/icons'
+import { UseResponsiveView } from '@/src/hooks/useResponsiveView'
 import { css, cx } from '@/styled-system/css'
-import { Segment, SegmentControl, SegmentGroup, SegmentIndicator, SegmentInput, SegmentLabel } from '@ark-ui/react'
-import { segmentGroup } from '@/styled-system/recipes'
+import { button, segmentGroup } from '@/styled-system/recipes'
+import { SegmentGroup } from '@ark-ui/react'
 
 export type Layout = 'horizontal' | 'vertical' | 'preview' | 'responsive'
 export type LayoutControlProps = {
   value: Layout
   onChange: (layout: Layout) => void
+  setResponsiveSize: UseResponsiveView['setResponsiveSize']
+  breakpoints: UseResponsiveView['breakpoints']
   isResponsive: boolean
 }
 
 export const LayoutControl = (props: LayoutControlProps) => {
-  const { value, onChange, isResponsive } = props
+  const { value, onChange, setResponsiveSize, breakpoints, isResponsive } = props
   const options = [
     { id: 'horizontal', label: 'Horizontal', icon: <HorizontalSplit /> },
     { id: 'vertical', label: 'Vertical', icon: <VerticalSplit /> },
     { id: 'preview', label: 'Preview', icon: <PreviewLayout /> },
   ]
   return (
-    <SegmentGroup
+    <SegmentGroup.Root
       className={cx(
         segmentGroup(),
         css({
@@ -29,11 +33,18 @@ export const LayoutControl = (props: LayoutControlProps) => {
         }),
       )}
       value={value}
-      onChange={(e) => onChange(e.value as any)}
+      onValueChange={(e) => onChange(e.value as any)}
     >
-      <SegmentIndicator />
+      <SegmentGroup.Indicator
+        className={css({
+          width: 'var(--width)',
+          height: 'var(--height)',
+          top: 'var(--top)',
+          left: 'var(--left)',
+        })}
+      />
       {options.map((option, id) => (
-        <Segment
+        <SegmentGroup.Item
           className={css({
             p: '1',
           })}
@@ -42,25 +53,40 @@ export const LayoutControl = (props: LayoutControlProps) => {
           aria-label={option.label}
           title={option.label}
         >
-          <SegmentLabel>{option.icon}</SegmentLabel>
-          <SegmentInput />
-          <SegmentControl />
-        </Segment>
+          <SegmentGroup.ItemText>{option.icon}</SegmentGroup.ItemText>
+          <SegmentGroup.ItemControl />
+        </SegmentGroup.Item>
       ))}
-      <button
-        data-active={isResponsive ? '' : undefined}
-        title="Toggle Responsive view"
+      <div
+        data-selected={isResponsive ? '' : undefined}
         className={css({
-          p: '1',
-          cursor: 'pointer',
-          color: { base: 'text.default', _active: 'text.complementary' },
+          display: 'flex',
+          color: { base: 'text.default', _selected: 'text.complementary' },
         })}
-        onClick={() => onChange('responsive')}
       >
-        <span>
-          <ResponsiveLayout />
-        </span>
-      </button>
-    </SegmentGroup>
+        <button
+          title="Toggle Responsive view"
+          className={cx(
+            button(),
+            css({
+              roundedRight: '0',
+              p: '1',
+            }),
+          )}
+          onClick={() => onChange('responsive')}
+        >
+          <span>
+            <ResponsiveLayout />
+          </span>
+        </button>
+        <BreakpointControl
+          setResponsiveSize={(size) => {
+            if (!isResponsive) onChange('responsive')
+            setResponsiveSize(size)
+          }}
+          breakpoints={breakpoints}
+        />
+      </div>
+    </SegmentGroup.Root>
   )
 }

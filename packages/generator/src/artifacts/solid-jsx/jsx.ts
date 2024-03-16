@@ -1,62 +1,120 @@
+import type { Context } from '@pandacss/core'
 import { outdent } from 'outdent'
-import type { Context } from '../../engines'
 
 export function generateSolidJsxFactory(ctx: Context) {
   const { componentName, factoryName } = ctx.jsx
   return {
     js: outdent`
-    import { Dynamic } from 'solid-js/web'
-    import { mergeProps, splitProps } from 'solid-js'
-    import { createComponent } from 'solid-js/web'
-    ${ctx.file.import('css, cx, cva, assignCss', '../css/index')}
+    import { createMemo, mergeProps, splitProps } from 'solid-js'
+    import { Dynamic, createComponent } from 'solid-js/web'
+    ${ctx.file.import('css, cx, cva', '../css/index')}
     ${ctx.file.import('normalizeHTMLProps', '../helpers')}
-    ${ctx.file.import('allCssProperties', './is-valid-prop')}
+    ${ctx.file.import(
+      'composeCvaFn, composeShouldForwardProps, defaultShouldForwardProp, getDisplayName',
+      './factory-helper',
+    )}
+    ${ctx.file.import('isCssProperty', './is-valid-prop')}
 
-    function styledFn(element, configOrCva = {}) {
-      const cvaFn = configOrCva.__cva__ || configOrCva.__recipe__ ? configOrCva : cva(configOrCva)
+    function styledFn(element, configOrCva = {}, options = {}) {
+      const cvaFn =
+        configOrCva.__cva__ || configOrCva.__recipe__
+          ? configOrCva
+          : cva(configOrCva)
 
-      return function ${componentName}(props) {
-        const mergedProps = mergeProps({ as: element }, props)
+      const forwardFn = options.shouldForwardProp || defaultShouldForwardProp
+      const shouldForwardProp = (prop) => forwardFn(prop, cvaFn.variantKeys)
 
-        const [localProps, variantProps, styleProps, htmlProps, elementProps] = splitProps(
-          mergedProps,
-          ['as', 'class'],
-          cvaFn.variantKeys,
-          allCssProperties,
-          normalizeHTMLProps.keys
+      const defaultProps = Object.assign(
+        options.dataAttr && configOrCva.__name__
+          ? { 'data-recipe': configOrCva.__name__ }
+          : {},
+        options.defaultProps
+      )
+
+      const __cvaFn__ = composeCvaFn(element.__cva__, cvaFn)
+      const __shouldForwardProps__ = composeShouldForwardProps(
+        element,
+        shouldForwardProp
+      )
+
+      const ${componentName} = (props) => {
+        const mergedProps = mergeProps(
+          { as: element.__base__ || element },
+          defaultProps,
+          props
         )
+
+        const [localProps, restProps] = splitProps(mergedProps, [
+          'as',
+          'class',
+          'className',
+        ])
+
+        const [htmlProps, aProps] = splitProps(restProps, normalizeHTMLProps.keys)
+
+        const forwardedKeys = createMemo(() => {
+          const keys = Object.keys(aProps)
+          return keys.filter((prop) => __shouldForwardProps__(prop))
+        })
+
+        const [forwardedProps, variantProps, bProps] = splitProps(aProps, forwardedKeys(), __cvaFn__.variantKeys)
+
+        const cssPropKeys = createMemo(() => {
+          const keys = Object.keys(bProps)
+          return keys.filter((prop) => isCssProperty(prop))
+        })
+
+        const [styleProps, elementProps] = splitProps(bProps, cssPropKeys())
 
         function recipeClass() {
           const { css: cssStyles, ...propStyles } = styleProps
-          const styles = assignCss(propStyles, cssStyles)
-          return cx(cvaFn(variantProps), css(styles), localProps.class)
+          const compoundVariantStyles =
+            __cvaFn__.__getCompoundVariantCss__?.(variantProps)
+          return cx(
+            __cvaFn__(variantProps, false),
+            css(compoundVariantStyles, propStyles, cssStyles),
+            localProps.class,
+            localProps.className
+          )
         }
 
         function cvaClass() {
           const { css: cssStyles, ...propStyles } = styleProps
-          const cvaStyles = cvaFn.raw(variantProps)
-          const styles = assignCss(cvaStyles, propStyles, cssStyles)
-          return cx(css(styles), localProps.class)
+          const cvaStyles = __cvaFn__.raw(variantProps)
+          return cx(
+            css(cvaStyles, propStyles, cssStyles),
+            localProps.class,
+            localProps.className
+          )
         }
 
         const classes = configOrCva.__recipe__ ? recipeClass : cvaClass
 
+        if (forwardedProps.className) {
+          delete forwardedProps.className
+        }
+
         return createComponent(
           Dynamic,
-          mergeProps(
-            {
-              get component() {
-                return localProps.as
-              },
-              get class() {
-                return classes()
-              }
+          mergeProps(forwardedProps, elementProps, normalizeHTMLProps(htmlProps), {
+            get component() {
+              return localProps.as
             },
-            elementProps,
-            normalizeHTMLProps(htmlProps)
-          )
+            get class() {
+              return classes()
+            },
+          })
         )
       }
+
+      const name = getDisplayName(element)
+
+      ${componentName}.displayName = \`${factoryName}.\${name}\`
+      ${componentName}.__cva__ = __cvaFn__
+      ${componentName}.__base__ = element
+      ${componentName}.__shouldForwardProps__ = shouldForwardProp
+
+      return ${componentName}
     }
 
     function createJsxFactory() {

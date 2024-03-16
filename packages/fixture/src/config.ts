@@ -1,27 +1,24 @@
 import presetBase from '@pandacss/preset-base'
 import presetPanda from '@pandacss/preset-panda'
-import type { Config } from '@pandacss/types'
+import type { PresetCore, Theme } from '@pandacss/types'
 
 import { recipes } from './recipes'
+import { slotRecipes } from './slot-recipes'
 import { semanticTokens } from './semantic-tokens'
-
-const { utilities, patterns } = presetBase
-const theme = presetPanda.theme
-
-const { breakpoints, keyframes } = theme
-
-export { utilities, patterns, breakpoints, keyframes }
 
 export const conditions = {
   ...presetBase.conditions,
   materialTheme: '[data-color=material] &',
   pastelTheme: '[data-color=pastel] &',
+  dark: '[data-theme=dark] &, .dark &, &.dark, &[data-theme=dark]',
+  light: '[data-theme=light] &, .light &, &.light, &[data-theme=light]',
 }
 
-export const tokens = {
+const theme = presetPanda.theme
+const tokens = {
   ...theme.tokens,
   colors: {
-    ...theme.tokens.colors,
+    ...theme.tokens?.colors,
     deep: {
       test: {
         yam: {
@@ -38,14 +35,34 @@ export const tokens = {
       },
     },
   },
+} as Theme['tokens']
+
+const textStyles = {
+  headline: {
+    h1: {
+      value: {
+        fontSize: '2rem',
+        fontWeight: 'bold',
+      },
+    },
+    h2: {
+      value: {
+        fontSize: { base: '1.5rem', lg: '2rem' },
+        fontWeight: 'bold',
+      },
+    },
+  },
 }
 
-export const config: Config = {
+export const fixturePreset: Omit<PresetCore, 'globalCss' | 'staticCss' | 'globalVars'> = {
   ...presetBase,
+  conditions,
   theme: {
     ...theme,
+    textStyles,
     tokens,
     semanticTokens,
     recipes,
+    slotRecipes,
   },
 }

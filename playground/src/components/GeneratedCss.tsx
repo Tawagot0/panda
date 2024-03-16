@@ -1,40 +1,29 @@
+import { defaultEditorOptions } from '@/src/hooks/useEditor'
 import { css } from '@/styled-system/css'
 import { Stack } from '@/styled-system/jsx'
-import { Segment, SegmentControl, SegmentGroup, SegmentIndicator, SegmentInput, SegmentLabel } from '@ark-ui/react'
+import { SegmentGroup } from '@ark-ui/react'
 import MonacoEditor from '@monaco-editor/react'
-import { useState, useRef, useEffect } from 'react'
-import { CssFileArtifact } from '../hooks/usePanda'
-import { OnMount, BeforeMount } from '@monaco-editor/react'
-import { useTheme } from 'next-themes'
-import { pandaTheme } from '../lib/gruvbox-theme'
-
 import prettier from 'prettier'
-import parserBabel from 'prettier/parser-babel'
-import parserHtml from 'prettier/parser-html'
-import parserPostCSS from 'prettier/parser-postcss'
-import { EDITOR_OPTIONS } from '@/src/hooks/useEditor'
+import prettierPluginBabel from 'prettier/plugins/babel'
+import prettierPluginHtml from 'prettier/plugins/html'
+import prettierPluginPostcss from 'prettier/plugins/postcss'
+import { useEffect, useState } from 'react'
+import { useReadLocalStorage } from 'usehooks-ts'
+import { CssFileArtifact } from '../hooks/usePanda'
 
 export const GeneratedCss = ({ cssArtifacts, visible }: { cssArtifacts: CssFileArtifact[]; visible: boolean }) => {
   const [activeTab, setActiveTab] = useState(cssArtifacts[0]?.file ?? 'styles.css')
-  const { resolvedTheme } = useTheme()
+
+  const wordWrap = useReadLocalStorage<'off' | 'on' | undefined>('wordWrap') ?? undefined
 
   const content = cssArtifacts.find((file) => file.file === activeTab)?.code ?? ''
 
-  const monacoRef = useRef<Parameters<OnMount>[1]>()
-
-  useEffect(() => {
-    monacoRef.current?.editor.setTheme(resolvedTheme === 'dark' ? 'panda-dark' : 'vs')
-  }, [monacoRef, resolvedTheme])
-
-  const onBeforeMount: BeforeMount = (monaco) => {
-    monaco.editor.defineTheme('panda-dark', pandaTheme)
-  }
-
+  const [pretty, setPretty] = useState(content)
   const formatCode = (code: string) => {
     try {
       return prettier.format(code, {
         parser: 'css',
-        plugins: [parserHtml, parserBabel, parserPostCSS],
+        plugins: [prettierPluginHtml, prettierPluginBabel, prettierPluginPostcss],
       })
     } catch (e) {
       console.log('e', e)
@@ -42,10 +31,14 @@ export const GeneratedCss = ({ cssArtifacts, visible }: { cssArtifacts: CssFileA
     }
   }
 
-  const onCodeEditorMount: OnMount = (editor, monaco) => {
-    if (resolvedTheme === 'dark') monaco.editor.setTheme('panda-dark')
-    monacoRef.current = monaco
-  }
+  useEffect(() => {
+    const run = async () => {
+      const code = await formatCode(content)
+      setPretty(code)
+    }
+
+    run()
+  }, [content])
 
   return (
     <Stack
@@ -56,7 +49,7 @@ export const GeneratedCss = ({ cssArtifacts, visible }: { cssArtifacts: CssFileA
         '&[hidden]': { display: 'none ' },
       }}
     >
-      <SegmentGroup
+      <SegmentGroup.Root
         className={css({
           display: 'flex',
           alignItems: 'center',
@@ -67,19 +60,23 @@ export const GeneratedCss = ({ cssArtifacts, visible }: { cssArtifacts: CssFileA
           borderBottomWidth: '1px',
         })}
         value={activeTab}
-        onChange={(e) => setActiveTab(e.value as any)}
+        onValueChange={(e) => setActiveTab(e.value as any)}
       >
-        <SegmentIndicator
+        <SegmentGroup.Indicator
           data-expanded={visible ? '' : undefined}
           className={css({
             background: { base: 'transparent', _expanded: 'primary' },
             zIndex: '1',
             boxShadow: 'xs',
             borderRadius: 'xl',
+            width: 'var(--width)',
+            height: 'var(--height)',
+            top: 'var(--top)',
+            left: 'var(--left)',
           })}
         />
         {cssArtifacts.map((artifact) => (
-          <Segment
+          <SegmentGroup.Item
             className={css({
               zIndex: '2',
               position: 'relative',
@@ -96,30 +93,27 @@ export const GeneratedCss = ({ cssArtifacts, visible }: { cssArtifacts: CssFileA
             key={artifact.file}
             value={artifact.file}
           >
-            <SegmentLabel
+            <SegmentGroup.ItemText
               className={css({
                 alignSelf: 'center',
-                textStyle: 'xs',
+                textStyle: 'sm',
                 fontWeight: 'medium',
                 color: { base: 'text.default', _dark: 'white', _checked: 'black' },
                 transition: 'color 170ms ease-in-out',
               })}
             >
               {artifact.file === 'index.css' ? artifact.dir?.slice(1).concat(artifact.file)?.join('/') : artifact.file}
-            </SegmentLabel>
-            <SegmentInput />
-            <SegmentControl />
-          </Segment>
+            </SegmentGroup.ItemText>
+            <SegmentGroup.ItemControl />
+          </SegmentGroup.Item>
         ))}
-      </SegmentGroup>
+      </SegmentGroup.Root>
 
       <MonacoEditor
-        value={formatCode(content)}
+        value={pretty}
         language="css"
         path={activeTab}
-        options={EDITOR_OPTIONS}
-        beforeMount={onBeforeMount}
-        onMount={onCodeEditorMount}
+        options={{ ...defaultEditorOptions, readOnly: true, wordWrap }}
       />
     </Stack>
   )

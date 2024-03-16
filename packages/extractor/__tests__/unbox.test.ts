@@ -155,10 +155,10 @@ test('unbox big theme', () => {
               "selector": "&:nth-of-type(odd)",
             },
             "panelHorizontalActive": {
-              "selector": "[data-panel-group-direction=\\"horizontal\\"] &",
+              "selector": "[data-panel-group-direction="horizontal"] &",
             },
             "panelVerticalActive": {
-              "selector": "[data-panel-group-direction=\\"vertical\\"] &",
+              "selector": "[data-panel-group-direction="vertical"] &",
             },
             "peerActive": {
               "selector": "[data-peer]:active ~ &, [data-peer][data-active] ~ &, .peer:active ~ &, .peer[data-active] ~ &",
@@ -2237,9 +2237,9 @@ test('unbox big theme', () => {
             "flexShrink": true,
             "flexWrap": true,
             "fontFamily": {
-              "body": "-apple-system, BlinkMacSystemFont, \\"Segoe UI\\", Helvetica, Arial, sans-serif, \\"Apple Color Emoji\\", \\"Segoe UI Emoji\\", \\"Segoe UI Symbol\\"",
-              "heading": "-apple-system, BlinkMacSystemFont, \\"Segoe UI\\", Helvetica, Arial, sans-serif, \\"Apple Color Emoji\\", \\"Segoe UI Emoji\\", \\"Segoe UI Symbol\\"",
-              "mono": "SFMono-Regular,Menlo,Monaco,Consolas,\\"Liberation Mono\\",\\"Courier New\\",monospace",
+              "body": "-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"",
+              "heading": "-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"",
+              "mono": "SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace",
             },
             "fontSize": {
               "2xl": "1.5rem",
@@ -4350,6 +4350,7 @@ test('unbox with conditions', () => {
     const className = css({
       px: 4,
       color: isDark ? 'blue.100' : 'blue.200',
+      opacity: isHovered ? 1 : 0,
       ...(isKnown && {
         backgroundColor: 'red.100',
         padding: false ? 2 : 8,
@@ -4385,6 +4386,12 @@ test('unbox with conditions', () => {
         },
         {
           "color": "blue.200",
+        },
+        {
+          "opacity": 1,
+        },
+        {
+          "opacity": 0,
         },
         {
           "fontSize": "2xl",

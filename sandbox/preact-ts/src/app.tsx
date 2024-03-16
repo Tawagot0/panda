@@ -1,68 +1,41 @@
-import { sva } from '../styled-system/css'
-import { card } from '../styled-system/recipes'
+import { css, sva } from '../styled-system/css'
+import { cq } from '../styled-system/patterns'
 
 const button = sva({
-  slots: ['label', 'icon'],
+  className: 'button',
+  slots: ['root', 'text'],
   base: {
-    label: {
-      color: 'red',
-      textDecoration: 'underline',
-    },
-  },
-  variants: {
-    rounded: {
-      true: {},
-    },
-    size: {
-      sm: {
-        label: {
-          fontSize: 'sm',
-        },
-        icon: {
-          fontSize: 'sm',
-        },
-      },
-      lg: {
-        label: {
-          fontSize: 'lg',
-        },
-        icon: {
-          fontSize: 'lg',
-          color: 'pink',
+    root: {
+      bg: 'blue.500',
+      _hover: {
+        '& .button__text': {
+          color: 'white',
         },
       },
     },
   },
-  defaultVariants: {
-    size: 'sm',
-  },
-  compoundVariants: [
-    {
-      size: 'lg',
-      rounded: true,
-      css: {
-        label: {
-          textTransform: 'uppercase',
-        },
-      },
-    },
-  ],
 })
 
-export function App() {
-  const btnClass = button({ size: 'lg', rounded: true })
-  const cardClass = card()
-
+export const App = () => {
+  const classes = button({ size: 'sm' })
   return (
-    <div>
-      <div class={cardClass.root}>
-        <p class={cardClass.label}> Card / Label</p>
-        <p class={cardClass.icon}> Card / Icon</p>
+    <>
+      <div className={cq()}>
+        <a className={css({ bg: { '@/sm': 'red.300' } })}>Click me</a>
       </div>
-
-      <button>
-        <span class={btnClass.label}>Button Label</span>
-      </button>
-    </div>
+      <div
+        className={css({
+          sm: {
+            color: 'yellow',
+          },
+          _focus: {
+            color: 'blue',
+          },
+        })}
+      ></div>
+      <div className={classes.root}>
+        <div className={classes.text}>Click me</div>
+      </div>
+    </>
   )
 }

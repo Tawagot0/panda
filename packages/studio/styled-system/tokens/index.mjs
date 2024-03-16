@@ -1,4 +1,28 @@
 const tokens = {
+  "aspectRatios.square": {
+    "value": "1 / 1",
+    "variable": "var(--aspect-ratios-square)"
+  },
+  "aspectRatios.landscape": {
+    "value": "4 / 3",
+    "variable": "var(--aspect-ratios-landscape)"
+  },
+  "aspectRatios.portrait": {
+    "value": "3 / 4",
+    "variable": "var(--aspect-ratios-portrait)"
+  },
+  "aspectRatios.wide": {
+    "value": "16 / 9",
+    "variable": "var(--aspect-ratios-wide)"
+  },
+  "aspectRatios.ultrawide": {
+    "value": "18 / 5",
+    "variable": "var(--aspect-ratios-ultrawide)"
+  },
+  "aspectRatios.golden": {
+    "value": "1.618 / 1",
+    "variable": "var(--aspect-ratios-golden)"
+  },
   "borders.none": {
     "value": "none",
     "variable": "var(--borders-none)"
@@ -1652,7 +1676,7 @@ const tokens = {
     "variable": "var(--colors-neutral-950)"
   },
   "assets.check": {
-    "value": "url('data:image/svg+xml;utf8,%3Csvg%20width%3D%226%22%20height%3D%226%22%20viewBox%3D%220%200%206%206%22%20fill%3D%22none%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cpath%20d%3D%22M0%200H3V3H0V0Z%22%20fill%3D%22%23E1E1E1%22/%3E%3Cpath%20d%3D%22M3%200H6V3H3V0Z%22%20fill%3D%22white%22/%3E%3Cpath%20d%3D%22M3%203H6V6H3V3Z%22%20fill%3D%22%23E1E1E1%22/%3E%3Cpath%20d%3D%22M0%203H3V6H0V3Z%22%20fill%3D%22white%22/%3E%3C/svg%3E%0A')",
+    "value": "url(\"data:image/svg+xml;utf8,%3Csvg%20width%3D%226%22%20height%3D%226%22%20viewBox%3D%220%200%206%206%22%20fill%3D%22none%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cpath%20d%3D%22M0%200H3V3H0V0Z%22%20fill%3D%22%23E1E1E1%22/%3E%3Cpath%20d%3D%22M3%200H6V3H3V0Z%22%20fill%3D%22white%22/%3E%3Cpath%20d%3D%22M3%203H6V6H3V3Z%22%20fill%3D%22%23E1E1E1%22/%3E%3Cpath%20d%3D%22M0%203H3V6H0V3Z%22%20fill%3D%22white%22/%3E%3C/svg%3E%0A\")",
     "variable": "var(--assets-check)"
   },
   "breakpoints.sm": {
@@ -1694,6 +1718,10 @@ const tokens = {
   "colors.border": {
     "value": "var(--colors-border)",
     "variable": "var(--colors-border)"
+  },
+  "colors.accent": {
+    "value": "var(--colors-accent)",
+    "variable": "var(--colors-accent)"
   },
   "spacing.-1": {
     "value": "calc(var(--spacing-1) * -1)",
@@ -1826,6 +1854,10 @@ const tokens = {
   "spacing.-3.5": {
     "value": "calc(var(--spacing-3\\.5) * -1)",
     "variable": "var(--spacing-3\\.5)"
+  },
+  "colors.colorPalette": {
+    "value": "var(--colors-color-palette)",
+    "variable": "var(--colors-color-palette)"
   },
   "colors.colorPalette.50": {
     "value": "var(--colors-color-palette-50)",

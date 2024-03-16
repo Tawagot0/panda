@@ -6,15 +6,16 @@
   "scripts": {
     "playground": "pnpm --filter=./playground",
     "build:playground": "pnpm --filter {./playground}... build",
-    "build:shared": "pnpm --filter {./packages/shared}... build-fast",
-    "prepare": "husky install && pnpm build-fast",
-    "dev": "pnpm build:shared && pnpm -r --parallel --filter=./packages/** --filter=./extension/** dev",
+    "prepare": "husky && pnpm build-fast",
+    "dev": "pnpm --parallel --filter=./packages/** dev",
     "build-fast": "pnpm -r --parallel --filter=./packages/** build-fast",
-    "build": "pnpm -r --filter=./packages/** --filter=./extension/** build",
+    "build": "pnpm -r --filter=./packages/** build",
     "check": "pnpm build && pnpm typecheck && pnpm lint && pnpm test run",
     "clean": "pnpm -r --parallel exec rimraf dist .turbo *.log",
     "reset": "pnpm -r --parallel exec rimraf node_modules && rimraf node_modules",
+    "test:import-map": "cd packages/config/__tests__/samples/ts-import-map && pnpm test && cd ../ts-import-map-one-source && pnpm test",
     "test": "vitest",
+    "test:codegen": "pnpm --filter=./sandbox/codegen test && pnpm --filter=./sandbox/codegen typecheck",
     "test-watch": "vitest --watch -u",
     "lint": "eslint packages --ext .ts",
     "prettier": "prettier --check packages",
@@ -27,30 +28,37 @@
     "deploy-studio": "pnpm prepare-studio && pnpm build-studio",
     "serve-studio": "npx serve ./sandbox/vite-ts/panda-static",
     "website": "pnpm --filter=./website",
-    "mdx-check": "mdx-local-link-checker docs && mdx-local-link-checker website/pages/docs",
-    "extension:build": "pnpm --filter=./extension/vscode build",
-    "extension:release": "pnpm --filter=./extension/vscode release",
-    "extension:prerelease": "pnpm --filter=./extension/vscode prerelease"
+    "mdx-check": "mdx-local-link-checker docs && mdx-local-link-checker website/pages/docs"
   },
   "keywords": [],
   "author": "Segun Adebayo <joseshegs@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "@changesets/changelog-github": "0.4.8",
-    "@changesets/cli": "2.26.2",
-    "@types/node": "20.4.5",
-    "@typescript-eslint/eslint-plugin": "6.2.1",
-    "@typescript-eslint/parser": "6.2.1",
-    "concurrently": "^8.2.0",
-    "husky": "8.0.3",
-    "lint-staged": "13.2.3",
-    "prettier": "^2.8.8",
-    "ts-morph": "19.0.0",
-    "tsup": "7.1.0",
-    "tsx": "3.12.7",
-    "typescript": "5.1.6",
-    "vite-tsconfig-paths": "4.2.0",
-    "vitest": "0.33.0"
+    "@changesets/changelog-github": "0.5.0",
+    "@changesets/cli": "2.27.1",
+    "chokidar": "3.6.0",
+    "concurrently": "8.2.2",
+    "cross-env": "7.0.3",
+    "happy-dom": "13.3.8",
+    "husky": "9.0.11",
+    "lint-staged": "15.2.2",
+    "mdx-local-link-checker": "2.1.1",
+    "rimraf": "5.0.5",
+    "ts-morph": "21.0.1",
+    "tsup": "8.0.2",
+    "tsx": "4.7.1",
+    "typescript": "5.3.3",
+    "vite-tsconfig-paths": "4.3.1",
+    "vitest": "1.3.0"
+  },
+  "devDependencies": {
+    "@types/eslint": "8.56.2",
+    "@types/node": "20.11.26",
+    "@typescript-eslint/eslint-plugin": "7.0.1",
+    "@typescript-eslint/parser": "7.0.1",
+    "eslint": "8.56.0",
+    "eslint-config-prettier": "9.1.0",
+    "prettier": "3.2.5"
   },
   "lint-staged": {
     "packages/**/*.{ts,tsx}": [
@@ -62,11 +70,7 @@
   "packageManager": "pnpm@8.6.4",
   "pnpm": {
     "overrides": {
-      "@types/react": "18.0.17"
+      "@swc/helpers@~0.4": "0.4.36"
     }
-  },
-  "devDependencies": {
-    "mdx-local-link-checker": "^2.1.1",
-    "rimraf": "^5.0.1"
   }
 }

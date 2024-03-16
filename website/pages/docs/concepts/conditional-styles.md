@@ -38,6 +38,8 @@ This works great, but might be a bit verbose. You can apply the condition `_hove
 </button>
 ```
 
+> Note: The `base` key is used to define the default value of the property, without any condition.
+
 ### Nested condition
 
 Conditions in Panda can be nested, which means you can apply multiple conditions to a single property or another condition.
@@ -177,7 +179,30 @@ You can style the `::before` and `::after` pseudo elements of an element using t
 </div>
 ```
 
-> Note: Ensure you wrap the content value in double quotes.
+#### Notes
+
+- **Before and After**: Ensure you wrap the content value in double quotes.
+- **Mixing with Conditions**: When using condition and pseudo elements, prefer to place the condition **before** the pseudo element.
+
+```jsx
+css({
+  // This works ✅
+  _dark: { _backdrop: { color: 'red' } }
+  // This doesn't work ❌
+  _backdrop: { _dark: { color: 'red' } }
+})
+```
+
+The reason `_backdrop: { _dark: { color: 'red' } }` doesn't work is because it generated an invalid CSS structure that looks like:
+
+```css
+&::backdrop {
+  &.dark,
+  .dark & {
+    color: red;
+  }
+}
+```
 
 ### Placeholder
 
@@ -397,6 +422,97 @@ You can style an element based on its `aria-{state}=true` attribute using the co
 
 > Most of the `aria-{state}` attributes typically mirror the support ARIA states in the browser pseudo class. For example, `aria-checked=true` is styled with `_checked`, `aria-disabled=true` is styled with `_disabled`.
 
+## Container queries
+
+You can define container names and sizes in your theme configuration and use them in your styles.
+
+```ts
+export default defineConfig({
+  // ...
+  theme: {
+    extend: {
+      containerNames: ['sidebar', 'content'],
+      containerSizes: {
+        xs: '40em',
+        sm: '60em',
+        md: '80em'
+      }
+    }
+  }
+})
+```
+
+The default container sizes in the `@pandacss/preset-panda` preset are shown below:
+
+```ts
+export const containerSizes = {
+  xs: '320px',
+  sm: '384px',
+  md: '448px',
+  lg: '512px',
+  xl: '576px',
+  '2xl': '672px',
+  '3xl': '768px',
+  '4xl': '896px',
+  '5xl': '1024px',
+  '6xl': '1152px',
+  '7xl': '1280px',
+  '8xl': '1440px'
+}
+```
+
+Then use them in your styles by referencing using `@<container-name>/<container-size>` syntax:
+
+> The default container syntax is `@/<container-size>`.
+
+```ts
+import { css } from '/styled-system/css'
+
+function Demo() {
+  return (
+    <nav className={css({ containerType: 'inline-size' })}>
+      <div
+        className={css({
+          fontSize: { '@/sm': 'md' }
+        })}
+      />
+    </nav>
+  )
+}
+```
+
+This will generate the following CSS:
+
+```css
+.cq-type_inline-size {
+  container-type: inline-size;
+}
+
+@container (min-width: 60em) {
+  .\@\/sm:fs_md {
+    container-type: inline-size;
+  }
+}
+```
+
+You can also named container queries:
+
+```ts
+import { cq } from 'styled-system/patterns'
+
+function Demo() {
+  return (
+    <nav className={cq({ name: 'sidebar' })}>
+      <div
+        className={css({
+          fontSize: { base: 'lg', '@sidebar/sm': 'md' }
+        })}
+      />
+    </nav>
+  )
+}
+```
+
 ## Reference
 
 Here's a list of all the condition shortcuts you can use in Panda:
@@ -454,14 +570,14 @@ Here's a list of all the condition shortcuts you can use in Panda:
 | \_groupExpanded        | `.group:is([aria-expanded=true], [data-expanded]) &`               |
 | \_groupInvalid         | `.group:invalid &`                                                 |
 | \_indeterminate        | `&:is(:indeterminate, [data-indeterminate], [aria-checked=mixed])` |
-| \_required             | `&:required`                                                       |
+| \_required             | `&:is(:required, [data-required], [aria-required=true])`           |
 | \_valid                | `&:is(:valid, [data-valid])`                                       |
 | \_invalid              | `&:is(:invalid, [data-invalid])`                                   |
 | \_autofill             | `&:autofill`                                                       |
 | \_inRange              | `&:in-range`                                                       |
 | \_outOfRange           | `&:out-of-range`                                                   |
-| \_placeholder          | `&:placeholder`                                                    |
-| \_placeholderShown     | `&:placeholder-shown`                                              |
+| \_placeholder          | `&:is(:placeholder, [data-placeholder])`                           |
+| \_placeholderShown     | `&:is(:placeholder-shown, [data-placeholder-shown])`               |
 | \_pressed              | `&:is([aria-pressed=true], [data-pressed])`                        |
 | \_selected             | `&:is([aria-selected=true], [data-selected])`                      |
 | \_default              | `&:default`                                                        |

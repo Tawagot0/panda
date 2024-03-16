@@ -16,14 +16,25 @@ export type PropertyValues =
   | Record<string, string>
   | ThemeFn
 
-type TransformArgs = {
+export interface ColorMixResult {
+  invalid: boolean
+  value: string
+  color?: string
+}
+
+export interface TransformUtils {
+  colorMix(value: string): ColorMixResult
+}
+
+export interface TransformArgs<T = any> {
   token: TokenFn
-  raw: any
+  raw: T
+  utils: TransformUtils
 }
 
 export type PropertyTransform = (value: any, args: TransformArgs) => NestedCssProperties | undefined
 
-export type PropertyConfig = {
+export interface PropertyConfig {
   /**
    * @internal
    * The cascade layer to which the property belongs
@@ -49,8 +60,48 @@ export type PropertyConfig = {
    * The shorthand of the property.
    */
   shorthand?: string | string[]
+  /**
+   * The CSS semantic group this property belongs
+   */
+  group?: CssSemanticGroup
 }
+
+export type CssSemanticGroup =
+  | 'System'
+  | 'Container'
+  | 'Display'
+  | 'Visibility'
+  | 'Position'
+  | 'Transform'
+  | 'Flex Layout'
+  | 'Grid Layout'
+  | 'Layout'
+  | 'Border'
+  | 'Border Radius'
+  | 'Width'
+  | 'Height'
+  | 'Margin'
+  | 'Padding'
+  | 'Color'
+  | 'Typography'
+  | 'Background'
+  | 'Shadow'
+  | 'Table'
+  | 'List'
+  | 'Scroll'
+  | 'Interactivity'
+  | 'Transition'
+  | 'Effect'
+  | 'Other'
 
 export type UtilityConfig = {
   [property in LiteralUnion<CssProperty>]?: PropertyConfig
+}
+
+type UtilityConfigWithExtend = {
+  [pattern in LiteralUnion<CssProperty>]?: PropertyConfig | UtilityConfig | undefined
+}
+
+export type ExtendableUtilityConfig = UtilityConfigWithExtend & {
+  extend?: UtilityConfig | undefined
 }

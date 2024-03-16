@@ -1,13 +1,14 @@
-import type { BoxNodeMap, BoxNodeLiteral, Unboxed, BoxNodeArray } from '@pandacss/extractor'
+import type { BoxNodeArray, BoxNodeLiteral, BoxNodeMap, Unboxed } from '@pandacss/extractor'
 
-export type ResultItem = {
+export interface ResultItem {
   name?: string
   data: Array<Unboxed['raw']>
-  type?: 'object' | 'cva' | 'sva' | 'pattern' | 'recipe' | 'jsx-factory' | 'jsx-pattern' | 'jsx-recipe' | 'jsx'
-  box: BoxNodeMap | BoxNodeLiteral | BoxNodeArray
+  type?: 'css' | 'cva' | 'sva' | 'pattern' | 'recipe' | 'jsx-factory' | 'jsx-pattern' | 'jsx-recipe' | 'jsx'
+  box?: BoxNodeMap | BoxNodeLiteral | BoxNodeArray
 }
 
-export type ParserResultType = {
+export interface ParserResultInterface {
+  all: Array<ResultItem>
   jsx: Set<ResultItem>
   css: Set<ResultItem>
   cva: Set<ResultItem>
@@ -15,22 +16,23 @@ export type ParserResultType = {
   recipe: Map<string, Set<ResultItem>>
   pattern: Map<string, Set<ResultItem>>
   filePath: string | undefined
-  set: (name: 'cva' | 'css', result: ResultItem) => void
-  setSva: (result: ResultItem) => void
-  setCva: (result: ResultItem) => void
-  setJsx: (result: ResultItem) => void
-  setRecipe: (name: string, result: ResultItem) => void
-  setPattern: (name: string, result: ResultItem) => void
   isEmpty: () => boolean
-  setFilePath: (filePath: string) => ParserResultType
   toArray: () => Array<ResultItem>
-  toJSON: () => {
-    sva: Array<ResultItem>
-    css: Array<ResultItem>
-    cva: Array<ResultItem>
-    recipe: Record<string, ResultItem[]>
-    pattern: Record<string, ResultItem[]>
-    jsx: Array<ResultItem>
+  set: (name: 'cva' | 'css' | 'sva', result: ResultItem) => void
+  setCss: (result: ResultItem) => void
+  setCva: (result: ResultItem) => void
+  setSva: (result: ResultItem) => void
+  setJsx: (result: ResultItem) => void
+  setPattern: (name: string, result: ResultItem) => void
+  setRecipe: (name: string, result: ResultItem) => void
+}
+
+export interface EncoderJson {
+  schemaVersion: string
+  styles: {
+    atomic?: string[]
+    recipes?: {
+      [name: string]: string[]
+    }
   }
-  merge: (result: ParserResultType) => ParserResultType
 }

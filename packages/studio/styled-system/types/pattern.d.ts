@@ -11,15 +11,24 @@ export type PatternProperty =
   | { type: 'token'; value: TokenCategory; property?: CssProperty }
   | { type: 'string' | 'boolean' | 'number' }
 
-export type PatternHelpers = {
+export interface PatternHelpers {
   map: (value: any, fn: (value: string) => string | undefined) => any
+  isCssUnit: (value: any) => boolean
+  isCssVar: (value: any) => boolean
+  isCssFunction: (value: any) => boolean
 }
 
-export type PatternProperties = Record<string, PatternProperty>
+export interface PatternProperties {
+  [key: string]: PatternProperty
+}
 
-type Props<T> = Record<LiteralUnion<keyof T>, any>
+type InferProps<T> = Record<LiteralUnion<keyof T>, any>
 
-export type PatternConfig<T extends PatternProperties = PatternProperties> = {
+export type PatternDefaultValue<T> = Partial<InferProps<T>>
+
+export type PatternDefaultValueFn<T> = (props: InferProps<T>) => PatternDefaultValue<T>
+
+export interface PatternConfig<T extends PatternProperties = PatternProperties> {
   /**
    * The description of the pattern. This will be used in the JSDoc comment.
    */
@@ -34,9 +43,13 @@ export type PatternConfig<T extends PatternProperties = PatternProperties> = {
    */
   properties?: T
   /**
+   * The default values of the pattern.
+   */
+  defaultValues?: PatternDefaultValue<T> | PatternDefaultValueFn<T>
+  /**
    * The css object this pattern will generate.
    */
-  transform?: (props: Props<T>, helpers: PatternHelpers) => SystemStyleObject
+  transform?: (props: InferProps<T>, helpers: PatternHelpers) => SystemStyleObject
   /**
    * The jsx element name this pattern will generate.
    */

@@ -1,22 +1,37 @@
+import { useState } from 'react'
 import { css, cx } from '../styled-system/css'
 import { Circle, HStack, Stack, panda } from '../styled-system/jsx'
 import { circle as circleLike, stack, vstack } from '../styled-system/patterns'
-import { button } from '../styled-system/recipes'
+import { button, someRecipe } from '../styled-system/recipes'
 import { Badge, badge } from './Badge'
 import { AnotherButtonWithRegex, Button, ListedButton } from './Button'
 import { Card } from './Card'
 
+const SomeRecipe = panda('div', someRecipe)
+
+const PrimaryButtonLike = panda('span', button, {
+  dataAttr: true,
+  defaultProps: {
+    variant: 'purple',
+  },
+  shouldForwardProp: (prop, _variantKeys) => {
+    return !prop.startsWith('_')
+  },
+})
+
 function App() {
-  const paddingY = '25px'
+  const paddingY = '22px'
   const className = css({ padding: paddingY, fontSize: paddingY ? '2xl' : '4xl' })
 
+  const [color] = useState('lime.300')
+
   return (
-    <div className={stack({ padding: '40px', align: 'stretch' })}>
+    <div className={stack({ padding: '40px', align: 'stretch', color: 'red.300' })}>
       <section className={css({ padding: '5', borderWidth: '1px' })}>
         <p className={css({ fontWeight: 'semibold', mb: '2' })}>CSS - Function</p>
         <div className={css({ maxWidth: '840px', marginX: 'auto', textAlign: 'center' })}>
           <div>
-            <h1 className={css({ color: 'black', fontSize: '56px', lineHeight: '1.1em' })}>
+            <h1 className={css({ color: color, fontSize: '56px', lineHeight: '1.1em' })}>
               Create accessible React apps <span className={css({ color: 'teal' })}>with speed</span>
             </h1>
             <p className={css({ color: 'text', fontSize: '20px', marginTop: '40px' })}>
@@ -64,6 +79,7 @@ function App() {
         <AnotherButtonWithRegex aria-label="AnotherButtonWithRegex" variant="secondary" size="sm">
           AnotherButtonWithRegex
         </AnotherButtonWithRegex>
+        <PrimaryButtonLike>Default props override</PrimaryButtonLike>
       </section>
 
       <section className={css({ padding: '5', borderWidth: '1px' })}>
@@ -111,6 +127,19 @@ function App() {
         <div className={badge({ status: 'warning' })}>Warning</div>
         <div className={badge({ status: 'success' })}>Warning</div>
       </section>
+
+      <SomeRecipe size="small" color="red.400">
+        config recipe compoundVariants overriding within styled, should be red.100
+      </SomeRecipe>
+      <span
+        className={css({
+          height: '5',
+          width: '5',
+          animation: 'spin 1s linear infinite',
+        })}
+      >
+        spinning
+      </span>
     </div>
   )
 }

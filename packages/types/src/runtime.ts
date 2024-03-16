@@ -4,10 +4,16 @@ interface Watcher {
   close(): Promise<void>
 }
 
-type InputOptions = {
+interface InputOptions {
   include: string[]
   exclude?: string[]
   cwd?: string
+}
+
+export type WatcherEventType = 'add' | 'addDir' | 'change' | 'unlink' | 'unlinkDir'
+
+export interface WatchOptions extends InputOptions {
+  poll?: boolean
 }
 
 interface FileSystem {
@@ -20,12 +26,13 @@ interface FileSystem {
   rmFileSync(file: string): void
   ensureDirSync(dirPath: string): void
   writeFileSync(filePath: string, content: string): void
-  watch(options: InputOptions & { poll?: boolean }): Watcher
+  watch(options: WatchOptions): Watcher
 }
 
 interface Path {
   join(...paths: string[]): string
   dirname(path: string): string
+  resolve(...paths: string[]): string
   extname(path: string): string
   relative(from: string, to: string): string
   isAbsolute(path: string): boolean

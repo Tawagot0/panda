@@ -1,20 +1,20 @@
-import { capitalize, toEm, toPx } from '@pandacss/shared'
-import type { RawCondition } from '@pandacss/types'
+import { capitalize, toPx, toRem } from '@pandacss/shared'
+import type { AtRuleCondition, ConditionDetails } from '@pandacss/types'
 import type { Root } from 'postcss'
 
 export class Breakpoints {
-  constructor(private breakpoints: Record<string, string>) {}
+  sorted: ReturnType<typeof sortBreakpoints>
+  values: Record<string, BreakpointEntry>
+  keys: string[]
+  ranges: Record<string, string>
+  conditions: Record<string, AtRuleCondition>
 
-  get sorted() {
-    return sortBreakpoints(this.breakpoints)
-  }
-
-  get values() {
-    return Object.fromEntries(this.sorted)
-  }
-
-  get keys() {
-    return ['base', ...Object.keys(this.values)]
+  constructor(private breakpoints: Record<string, string>) {
+    this.sorted = sortBreakpoints(breakpoints)
+    this.values = Object.fromEntries(this.sorted)
+    this.keys = ['base', ...Object.keys(this.values)]
+    this.ranges = this.getRanges()
+    this.conditions = this.getConditions()
   }
 
   get = (name: string) => {
@@ -31,7 +31,7 @@ export class Breakpoints {
     return this.build({ min, max })
   }
 
-  get ranges(): Record<string, string> {
+  private getRanges = () => {
     const breakpoints: string[] = Object.keys(this.values)
     const permuations = getPermutations(breakpoints)
 
@@ -39,7 +39,7 @@ export class Breakpoints {
       .flatMap((name) => {
         const value = this.get(name)
 
-        const down: [string, string] = [`${name}Down`, this.build({ max: value.min })]
+        const down: [string, string] = [`${name}Down`, this.build({ max: adjust(value.min) })]
         const up: [string, string] = [name, this.build({ min: value.min })]
         const only: [string, string] = [`${name}Only`, this.only(name)]
 
@@ -57,7 +57,7 @@ export class Breakpoints {
     return Object.fromEntries(values)
   }
 
-  get conditions(): Record<string, Cond> {
+  private getConditions = () => {
     const values = Object.entries(this.ranges).map(([key, value]) => {
       return [key, toCondition(key, value)]
     })
@@ -65,7 +65,7 @@ export class Breakpoints {
     return Object.fromEntries(values)
   }
 
-  getCondition = (key: string): Cond | undefined => {
+  getCondition = (key: string): ConditionDetails | undefined => {
     return this.conditions[key]
   }
 
@@ -75,17 +75,22 @@ export class Breakpoints {
       if (!value) {
         throw rule.error(`No \`${rule.params}\` screen found.`)
       }
+      if (value.type !== 'at-rule') {
+        throw rule.error(`\`${rule.params}\` is not a valid screen.`)
+      }
+
       rule.name = 'media'
       rule.params = value.params
     })
   }
 }
 
-type Entries = [string, { name: string; min?: string | null; max?: string | null }][]
+type BreakpointEntry = { name: string; min?: string | null; max?: string | null }
+type Entries = [string, BreakpointEntry][]
 
 function adjust(value: string | null | undefined) {
-  const computedMax = parseFloat(toPx(value!) ?? '') - 0.05
-  return toEm(`${computedMax}px`) as string
+  const computedMax = parseFloat(toPx(value!) ?? '') - 0.04
+  return toRem(`${computedMax}px`) as string
 }
 
 function sortBreakpoints(breakpoints: Record<string, string>): Entries {
@@ -104,18 +109,15 @@ function sortBreakpoints(breakpoints: Record<string, string>): Entries {
         max = adjust(max)
       }
 
-      return [name, { name, min: toEm(min), max }]
+      return [name, { name, min: toRem(min), max }]
     })
 }
 
-type Cond = RawCondition & { params: string }
-
-const toCondition = (key: string, value: string): Cond => ({
+const toCondition = (key: string, value: string): AtRuleCondition => ({
   type: 'at-rule',
   name: 'breakpoint',
   value: key,
-  raw: key,
-  rawValue: `@media ${value}`,
+  raw: `@media ${value}`,
   params: value,
 })
 

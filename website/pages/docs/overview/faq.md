@@ -8,13 +8,90 @@ layout: none
 
 Here's a list of frequently asked questions (FAQ) and how to resolve common issues in Panda.
 
+---
+
+### How does Panda manage style conflicts ?
+
+When you combine shorthand and longhand properties, Panda will resolve the styles in a predictable way. The shorthand property will take precedence over the longhand property.
+
+```jsx
+import { css } from '../styled-system/css'
+
+const styles = css({
+  paddingTop: '20px'
+  padding: "10px",
+})
+```
+
+The styles generated at build time will look like this:
+
+```css
+@layer utilities {
+  .p_10px {
+    padding: 10px;
+  }
+
+  .pt_20px {
+    padding-top: 20px;
+  }
+}
+```
+
+---
+
+### HMR does not work when I use `tsconfig` paths?
+
+Panda tries to automatically infer and read the custom paths defined in `tsconfig.json` file. However, there might be scenarios where the hot module replacement doesn't work.
+
+To fix this add the `importMap` option to your `panda.config.js` file, setting it's value to the specified `paths` in your `tsconfig.json` file.
+
+```json
+// tsconfig.json
+
+{
+  "compilerOptions": {
+    "baseUrl": "./src",
+    "paths": {
+      "@my-path/*": ["./styled-system/*"]
+    }
+  }
+}
+```
+
+```js
+// panda.config.js
+
+module.exports = {
+  importMap: '@my-path'
+}
+```
+
+This will ensure that the paths are resolved correctly, and HMR works as expected.
+
+---
+
+#### HMR not triggered
+
+If you are having issues with HMR not being triggered after a `panda.config.ts` change (or one of its [dependencies](/docs/references/config#dependencies)), you can manually specify the files that should trigger a rebuild by adding the following to your `panda.config.ts`:
+
+```js filename="panda.config.ts"
+import { defineConfig } from '@pandacss/dev'
+
+export default defineConfig({
+  // ...
+  dependencies: ['path/to/files/**.ts']
+})
+```
+
+---
+
 ### Why are my styles not applied?
 
 Check that the [`@layer` rules](/docs/concepts/cascade-layers#layer-css) are set and the corresponding `.css` file is included. [If you're not using `postcss`](/docs/installation/cli), ensure that `styled-system/styles.css` is imported and that the `panda` command has been run (or is running with `--watch`).
 
 ---
 
-### How can I debug?
+### How can I debug the styles?
 
 You can use the `panda debug` to debug design token extraction & css generated from files.
 
@@ -28,7 +105,7 @@ If you're not getting import autocomplete in your IDE, you may need to include t
 
 ---
 
-### How do I get a type with each recipe properties ?
+### How do I get a type with each recipe properties?
 
 You can get a [`config recipe`](/docs/concepts/recipes#config-recipe) properties types by using `XXXVariantProps`. Let's say you have a `config recipe` named `button`, you can import its type like this:
 
@@ -121,12 +198,6 @@ In such a case, check the [`outExtension`](/docs/references/config#outextension)
 
 ---
 
-### How should I use emitPackage with yarn PnP?
-
-When using `emitPackage: true` with yarn PnP, set the `nodeLinker` to 'node-modules' in your `.yarnrc.yml`. This tells Yarn to use the traditional way of linking dependencies, which can solve compatibility issues.
-
----
-
 ### Why does importing `styled` not exist?
 
 You should use [`config.jsxFramework`](/docs/concepts/style-props#configure-jsx) when you need to import styled components. You can then use the [`jsxFactory`](/references/config#jsxfactory) option to set the name of the factory component.
@@ -186,7 +257,7 @@ When dealing with simple use cases, or if you need code colocation, or even avoi
 
 ---
 
-### Why does the panda codegen command fails ?
+### Why does the panda codegen command fail ?
 
 If you run into any error related to "Transforming const to the configured target environment ("es5") is not supported yet", update your tsconfig to use es6 or higher:
 
@@ -234,4 +305,26 @@ css({
     color: 'red.300'
   }
 })
+```
+
+---
+
+### How can I prevent other libraries from overriding my styles?
+
+You can use [Layer Imports](<https://developer.mozilla.org/en-US/docs/Web/CSS/@import#layer-name:~:text=%40import%20url%20layer(layer%2Dname)%3B>) to prevent other libraries from overriding your styles.
+
+First of all you cast the css from the other library(s) to a css layer:
+
+```css
+@import url('bootstrap.css') layer(bootstrap);
+
+@import url('ionic.css') layer(ionic);
+```
+
+Then update the default layer list to deprioritize the styles from the other library(s):
+
+```css
+@layer bootstrap, reset, base, token, recipes, utilities;
+
+@layer ionic, reset, base, token, recipes, utilities;
 ```

@@ -1,8 +1,6 @@
 /* eslint-disable */
 export * from './factory';
-
 export * from './is-valid-prop';
-
 export * from './box';
 export * from './flex';
 export * from './stack';
@@ -23,6 +21,5 @@ export * from './divider';
 export * from './float';
 export * from './bleed';
 export * from './visually-hidden';
-export * from './styled-link';
-
+export * from './cq';
 export type { HTMLPandaProps, PandaComponent } from '../types/jsx';

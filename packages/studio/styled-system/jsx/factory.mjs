@@ -1,43 +1,63 @@
 import { createElement, forwardRef, useMemo } from 'react'
-import { css, cx, cva, assignCss } from '../css/index.mjs';
+import { css, cx, cva } from '../css/index.mjs';
+import { defaultShouldForwardProp, composeShouldForwardProps, composeCvaFn, getDisplayName } from './factory-helper.mjs';
 import { splitProps, normalizeHTMLProps } from '../helpers.mjs';
 import { isCssProperty } from './is-valid-prop.mjs';
 
-function styledFn(Dynamic, configOrCva = {}) {
+function styledFn(Dynamic, configOrCva = {}, options = {}) {
   const cvaFn = configOrCva.__cva__ || configOrCva.__recipe__ ? configOrCva : cva(configOrCva)
 
+  const forwardFn = options.shouldForwardProp || defaultShouldForwardProp
+  const shouldForwardProp = (prop) => forwardFn(prop, cvaFn.variantKeys)
+
+  const defaultProps = Object.assign(
+    options.dataAttr && configOrCva.__name__ ? { 'data-recipe': configOrCva.__name__ } : {},
+    options.defaultProps,
+  )
+
+  const __cvaFn__ = composeCvaFn(Dynamic.__cva__, cvaFn)
+  const __shouldForwardProps__ = composeShouldForwardProps(Dynamic, shouldForwardProp)
+  const __base__ = Dynamic.__base__ || Dynamic
+
   const PandaComponent = /* @__PURE__ */ forwardRef(function PandaComponent(props, ref) {
-    const { as: Element = Dynamic, ...restProps } = props
+    const { as: Element = __base__, children, ...restProps } = props
 
-    const [variantProps, styleProps, htmlProps, elementProps] = useMemo(() => {
-  return splitProps(restProps, cvaFn.variantKeys, isCssProperty, normalizeHTMLProps.keys)
-}, [restProps])
+    const combinedProps = useMemo(() => Object.assign({}, defaultProps, restProps), [restProps])
 
-function recipeClass() {
-  const { css: cssStyles, ...propStyles } = styleProps
-  const styles = assignCss(propStyles, cssStyles)
-  return cx(cvaFn(variantProps), css(styles), elementProps.className)
-}
+    const [htmlProps, forwardedProps, variantProps, styleProps, elementProps] = useMemo(() => {
+      return splitProps(combinedProps, normalizeHTMLProps.keys, __shouldForwardProps__, __cvaFn__.variantKeys, isCssProperty)
+    }, [combinedProps])
 
-function cvaClass() {
-  const { css: cssStyles, ...propStyles } = styleProps
-  const cvaStyles = cvaFn.raw(variantProps)
-  const styles = assignCss(cvaStyles, propStyles, cssStyles)
-  return cx(css(styles), elementProps.className)
-}
+    function recipeClass() {
+      const { css: cssStyles, ...propStyles } = styleProps
+      const compoundVariantStyles = __cvaFn__.__getCompoundVariantCss__?.(variantProps)
+      return cx(__cvaFn__(variantProps, false), css(compoundVariantStyles, propStyles, cssStyles), combinedProps.className)
+    }
 
+    function cvaClass() {
+      const { css: cssStyles, ...propStyles } = styleProps
+      const cvaStyles = __cvaFn__.raw(variantProps)
+      return cx(css(cvaStyles, propStyles, cssStyles), combinedProps.className)
+    }
 
     const classes = configOrCva.__recipe__ ? recipeClass : cvaClass
 
     return createElement(Element, {
       ref,
+      ...forwardedProps,
       ...elementProps,
       ...normalizeHTMLProps(htmlProps),
       className: classes(),
-    })
+    }, combinedProps.children ?? children)
   })
 
-  PandaComponent.displayName = `panda.${Dynamic}`
+  const name = getDisplayName(__base__)
+
+  PandaComponent.displayName = `panda.${name}`
+  PandaComponent.__cva__ = __cvaFn__
+  PandaComponent.__base__ = __base__
+  PandaComponent.__shouldForwardProps__ = shouldForwardProp
+
   return PandaComponent
 }
 
